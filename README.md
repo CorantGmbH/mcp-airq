@@ -11,6 +11,8 @@ MCP server for [air-Q](https://www.air-q.com) air quality sensor devices. Enable
 
 Built on [aioairq](https://pypi.org/project/aioairq/), the official async Python library for air-Q.
 
+<!-- mcp-name: io.github.corantgmbh/mcp-airq -->
+
 ## Installation
 
 ```bash
@@ -153,6 +155,14 @@ cd mcp-airq
 pip install -e ".[dev]"
 pytest
 ```
+
+## Release Process
+
+1. Update `version` in `pyproject.toml`.
+2. Commit and create a matching Git tag like `v0.1.1`.
+3. Publish a GitHub Release from that tag.
+
+The publish workflow validates that the release tag matches `pyproject.toml`, uploads the package to PyPI, and then publishes the same version to the MCP Registry.
 
 ## License
 
