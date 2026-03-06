@@ -40,7 +40,7 @@ async def set_led_theme(
     """Set the LED visualization theme for one or both sides of the device.
 
     Common themes: 'standard', 'CO2', 'VOC', 'Humidity', 'PM2.5', 'Noise'.
-    Use get_config to see all available themes.
+    Use get_possible_led_themes to see all available themes.
     """
     mgr = _manager(ctx)
     airq = mgr.resolve(device)

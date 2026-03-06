@@ -91,3 +91,43 @@ async def identify_device(ctx: Context, device: str | None = None) -> str:
     airq = mgr.resolve(device)
     device_id = await airq.blink()
     return f"Device is blinking. Device ID: {device_id}"
+
+
+@mcp.tool(annotations=READ_ONLY)
+@handle_airq_errors
+async def get_led_theme(ctx: Context, device: str | None = None) -> str:
+    """Get the current LED visualization theme for both sides of a device."""
+    mgr = _manager(ctx)
+    airq = mgr.resolve(device)
+    theme = await airq.get_led_theme()
+    return json.dumps(theme, indent=2)
+
+
+@mcp.tool(annotations=READ_ONLY)
+@handle_airq_errors
+async def get_possible_led_themes(ctx: Context, device: str | None = None) -> str:
+    """List all available LED visualization themes for a device."""
+    mgr = _manager(ctx)
+    airq = mgr.resolve(device)
+    themes = await airq.get_possible_led_themes()
+    return json.dumps(themes, indent=2)
+
+
+@mcp.tool(annotations=READ_ONLY)
+@handle_airq_errors
+async def get_night_mode(ctx: Context, device: str | None = None) -> str:
+    """Get the current night mode configuration of a device."""
+    mgr = _manager(ctx)
+    airq = mgr.resolve(device)
+    night_mode = await airq.get_night_mode()
+    return json.dumps(night_mode, indent=2)
+
+
+@mcp.tool(annotations=READ_ONLY)
+@handle_airq_errors
+async def get_brightness_config(ctx: Context, device: str | None = None) -> str:
+    """Get the current LED brightness configuration (day and night values) of a device."""
+    mgr = _manager(ctx)
+    airq = mgr.resolve(device)
+    brightness = await airq.get_brightness_config()
+    return json.dumps(brightness, indent=2)

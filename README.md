@@ -1,5 +1,11 @@
 # mcp-airq
 
+[![PyPI](https://img.shields.io/pypi/v/mcp-airq)](https://pypi.org/project/mcp-airq/)
+[![Python](https://img.shields.io/pypi/pyversions/mcp-airq)](https://pypi.org/project/mcp-airq/)
+[![License](https://img.shields.io/pypi/l/mcp-airq)](LICENSE)
+[![Tests](https://github.com/CorantGmbH/mcp-airq/actions/workflows/tests.yml/badge.svg)](https://github.com/CorantGmbH/mcp-airq/actions/workflows/tests.yml)
+[![Coverage](https://codecov.io/gh/CorantGmbH/mcp-airq/branch/main/graph/badge.svg)](https://codecov.io/gh/CorantGmbH/mcp-airq)
+
 MCP server for [air-Q](https://www.air-q.com) air quality sensor devices. Enables Claude Desktop, Claude Code, and other MCP clients to directly query and configure air-Q devices on your local network.
 
 Built on [aioairq](https://pypi.org/project/aioairq/), the official async Python library for air-Q.
