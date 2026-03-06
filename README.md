@@ -75,6 +75,12 @@ claude mcp add airq -e AIRQ_CONFIG_FILE=~/.config/airq-devices.json -- uvx mcp-a
 
 This writes to `~/.claude/settings.json` and is automatically picked up by the **Claude Code VSCode extension** as well — no separate configuration needed.
 
+> **If the server fails to connect:** MCP servers run in a subprocess that may not inherit your shell's PATH. Replace `uvx` with its full path (`which uvx` → e.g. `/home/you/.local/bin/uvx`):
+>
+> ```bash
+> claude mcp add airq -e AIRQ_CONFIG_FILE=~/.config/airq-devices.json -- /home/you/.local/bin/uvx mcp-airq
+> ```
+
 ## OpenAI Codex
 
 Register the server once via the CLI:
@@ -84,6 +90,8 @@ codex mcp add airq --env AIRQ_CONFIG_FILE=~/.config/airq-devices.json -- uvx mcp
 ```
 
 This writes to `~/.codex/config.toml` and is automatically picked up by the **Codex VSCode extension** as well.
+
+> **If the server fails to connect:** Use the full path to `uvx` (see note above).
 
 ## Available Tools
 
