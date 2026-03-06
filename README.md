@@ -1,5 +1,6 @@
 # mcp-airq
 
+![MCP](https://img.shields.io/badge/MCP-compatible-purple)
 [![PyPI](https://img.shields.io/pypi/v/mcp-airq)](https://pypi.org/project/mcp-airq/)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-airq)](https://pypi.org/project/mcp-airq/)
 [![License](https://img.shields.io/pypi/l/mcp-airq)](LICENSE)
@@ -22,9 +23,9 @@ Or run directly with [uvx](https://docs.astral.sh/uv/):
 uvx mcp-airq
 ```
 
-## Configuration
+## Device Configuration
 
-Configure your air-Q devices via the `AIRQ_DEVICES` environment variable (JSON array):
+Create a JSON file with your device(s), e.g. `~/.config/airq-devices.json`:
 
 ```json
 [
@@ -33,16 +34,18 @@ Configure your air-Q devices via the `AIRQ_DEVICES` environment variable (JSON a
 ]
 ```
 
-Or point to a JSON file:
-
-```bash
-export AIRQ_CONFIG_FILE=/path/to/devices.json
-```
-
-Each device entry requires:
+Each entry requires:
 - `address` — IP address or mDNS hostname (e.g. `abcde_air-q.local`)
 - `password` — Device password (default: `airqsetup`)
 - `name` (optional) — Human-readable name; defaults to address
+
+Then restrict access to the file (it contains passwords):
+
+```bash
+chmod 600 ~/.config/airq-devices.json
+```
+
+Alternatively, pass the device list inline via the `AIRQ_DEVICES` environment variable as a JSON string.
 
 ## Claude Desktop
 
@@ -55,7 +58,7 @@ Add to your `claude_desktop_config.json`:
       "command": "uvx",
       "args": ["mcp-airq"],
       "env": {
-        "AIRQ_DEVICES": "[{\"address\": \"192.168.4.1\", \"password\": \"airqsetup\", \"name\": \"Living Room\"}]"
+        "AIRQ_CONFIG_FILE": "/home/you/.config/airq-devices.json"
       }
     }
   }
@@ -64,24 +67,40 @@ Add to your `claude_desktop_config.json`:
 
 ## Claude Code
 
+Register the server once via the CLI:
+
 ```bash
-claude mcp add airq -- uvx mcp-airq
+claude mcp add airq -e AIRQ_CONFIG_FILE=~/.config/airq-devices.json -- uvx mcp-airq
 ```
 
-Then set the `AIRQ_DEVICES` environment variable before launching Claude Code.
+This writes to `~/.claude/settings.json` and is automatically picked up by the **Claude Code VSCode extension** as well — no separate configuration needed.
+
+## OpenAI Codex
+
+Register the server once via the CLI:
+
+```bash
+codex mcp add airq --env AIRQ_CONFIG_FILE=~/.config/airq-devices.json -- uvx mcp-airq
+```
+
+This writes to `~/.codex/config.toml` and is automatically picked up by the **Codex VSCode extension** as well.
 
 ## Available Tools
 
 ### Read-Only
 
-| Tool              | Description                                                          |
-| ----------------- | -------------------------------------------------------------------- |
-| `list_devices`    | List all configured air-Q devices                                    |
-| `get_air_quality` | Get current sensor readings (temperature, CO₂, humidity, PM, VOC, …) |
-| `get_device_info` | Get device metadata (name, model, firmware version)                  |
-| `get_config`      | Get full device configuration                                        |
-| `get_logs`        | Get device log entries                                               |
-| `identify_device` | Make device blink its LEDs for visual identification                 |
+| Tool                      | Description                                                          |
+| ------------------------- | -------------------------------------------------------------------- |
+| `list_devices`            | List all configured air-Q devices                                    |
+| `get_air_quality`         | Get current sensor readings (temperature, CO₂, humidity, PM, VOC, …) |
+| `get_device_info`         | Get device metadata (name, model, firmware version)                  |
+| `get_config`              | Get full device configuration                                        |
+| `get_logs`                | Get device log entries                                               |
+| `identify_device`         | Make device blink its LEDs for visual identification                 |
+| `get_led_theme`           | Get current LED visualization theme                                  |
+| `get_possible_led_themes` | List all available LED visualization themes                          |
+| `get_night_mode`          | Get current night mode configuration                                 |
+| `get_brightness_config`   | Get current LED brightness configuration                             |
 
 ### Configuration
 
