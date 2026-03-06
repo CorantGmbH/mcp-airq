@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-airq"
+version = "0.1.0"
+description = "MCP server for air-Q air quality sensor devices"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+authors = [
+    {name = "Corant GmbH"},
+]
+keywords = ["mcp", "air-q", "airq", "air-quality", "sensor"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "aioairq>=0.4.0",
+    "aiohttp>=3.9.0",
+]
+
+[project.scripts]
+mcp-airq = "mcp_airq.server:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "aioresponses>=0.7",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: tests requiring a real air-Q device on the network",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_airq"]
