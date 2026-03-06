@@ -1,8 +1,12 @@
 # Changelog
 
-## [1.0.0] - 2026-03-06
+## [1.0.0] - TBD
 
 Initial stable release.
+
+## [0.1.0] - 2026-03-06
+
+Initial release.
 
 ### Tools
 
