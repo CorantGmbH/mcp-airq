@@ -11,7 +11,7 @@ MCP server for [air-Q](https://www.air-q.com) air quality sensor devices. Enable
 
 Built on [aioairq](https://pypi.org/project/aioairq/), the official async Python library for air-Q.
 
-<!-- mcp-name: io.github.corantgmbh/mcp-airq -->
+<!-- mcp-name: io.github.CorantGmbH/mcp-airq -->
 
 ## Installation
 
