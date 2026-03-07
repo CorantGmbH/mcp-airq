@@ -32,7 +32,7 @@ def load_config() -> list[DeviceConfig]:
                 "No air-Q devices configured. Set AIRQ_DEVICES env var "
                 "(JSON array) or AIRQ_CONFIG_FILE (path to JSON file)."
             )
-        with open(config_file) as f:
+        with open(config_file, encoding="utf-8") as f:
             raw = f.read()
 
     try:

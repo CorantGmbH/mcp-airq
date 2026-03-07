@@ -1,8 +1,18 @@
 # Changelog
 
-## [1.0.0] - TBD
+## [1.0.0] - 2026-03-07
 
-Initial stable release.
+### Prompts
+
+- `airq_sensor_guide` — Explains all sensor keys with their units and value semantics (e.g. `mold` and `virus` are quality indices where 100 % = best, 0 % = worst)
+- `airq_config_guide` — Documents all device configuration keys returned by `get_config`, including network, LED/night mode, measurement settings, virtual sensors, and alarms
+
+### Developer tooling
+
+- Added `pre-commit` with black, pylint, pytest, pyright, and standard pre-commit-hooks (same setup as firmware-D)
+- Added `pyrightconfig.json` targeting the `src/` layout
+- Extended GitHub Actions workflow (`tests.yml`) with pylint and pyright steps on Python 3.11
+- Added `pylint`, `black`, `pyright`, and `pytest-xdist` to dev dependencies
 
 ## [0.1.0] - 2026-03-06
 

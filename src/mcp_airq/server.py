@@ -20,7 +20,7 @@ logger = logging.getLogger("mcp-airq")
 
 
 @asynccontextmanager
-async def app_lifespan(server: FastMCP) -> AsyncIterator[DeviceManager]:
+async def app_lifespan(_server: FastMCP) -> AsyncIterator[DeviceManager]:
     """Create shared aiohttp session and device manager for the server lifetime."""
     configs = load_config()
     logger.info("Starting air-Q MCP server with %d device(s)", len(configs))
@@ -39,8 +39,10 @@ mcp = FastMCP(
     lifespan=app_lifespan,
 )
 
-# Import tools to register them with the mcp instance
+# Import tools and prompts to register them with the mcp instance
+# pylint: disable=wrong-import-position, unused-import, cyclic-import
 from mcp_airq.tools import dangerous, read, write  # noqa: E402, F401
+from mcp_airq import prompts  # noqa: E402, F401
 
 
 def main():

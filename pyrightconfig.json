@@ -1,0 +1,9 @@
+{
+  "include": ["src"],
+  "exclude": [
+    "**/__pycache__/**",
+    "**/.pytest_cache/**",
+    "**/.github/**"
+  ],
+  "reportMissingImports": true
+}

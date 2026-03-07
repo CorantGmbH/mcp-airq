@@ -19,9 +19,7 @@ def _manager(ctx: Context) -> DeviceManager:
 
 @mcp.tool(annotations=WRITE)
 @handle_airq_errors
-async def set_device_name(
-    ctx: Context, name: str, device: str | None = None
-) -> str:
+async def set_device_name(ctx: Context, name: str, device: str | None = None) -> str:
     """Rename a device. The new name appears on the device display."""
     mgr = _manager(ctx)
     airq = mgr.resolve(device)
@@ -51,7 +49,7 @@ async def set_led_theme(
         theme["left"] = left
     if right is not None:
         theme["right"] = right
-    await airq.set_led_theme(theme)
+    await airq.set_led_theme(theme)  # type: ignore[arg-type]
     return f"LED theme updated: {json.dumps(theme)}"
 
 
@@ -88,7 +86,7 @@ async def set_night_mode(
         "wifi_night_off": wifi_night_off,
         "alarm_night_off": alarm_night_off,
     }
-    await airq.set_night_mode(night_mode)
+    await airq.set_night_mode(night_mode)  # type: ignore[arg-type]
     status = "enabled" if activated else "disabled"
     return f"Night mode {status}. Config: {json.dumps(night_mode)}"
 
@@ -137,5 +135,8 @@ async def configure_network(
         return "Network set to DHCP. Restart the device to apply."
     if not all([ip, subnet, gateway, dns]):
         return "For static IP, provide all of: ip, subnet, gateway, dns."
+    assert (
+        ip and subnet and gateway and dns
+    )  # narrowed from str | None after guard above
     await airq.set_ifconfig_static(ip, subnet, gateway, dns)
     return f"Static IP configured: {ip}/{subnet}, gateway={gateway}, dns={dns}. Restart to apply."
