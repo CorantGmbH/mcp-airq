@@ -49,21 +49,22 @@ from mcp_airq import prompts  # noqa: E402, F401
 
 
 _HELP_TEXT = """\
-mcp-airq — MCP server for air-Q air quality sensor devices
-
 This command is designed to be launched by an MCP client (e.g. Claude Desktop,
 Claude Code, or OpenAI Codex), not run interactively from the terminal.
 It communicates via JSON-RPC 2.0 over standard input/output (stdio transport).
 
-To add this server to Claude Desktop, add the following to your
-claude_desktop_config.json:
+Set the AIRQ_DEVICES environment variable to a JSON array of device objects:
+
+  [{"address": "192.168.1.100", "password": "airqsetup", "name": "Living Room"}]
+
+To add this server to Claude Desktop, edit claude_desktop_config.json:
 
   {
     "mcpServers": {
       "air-Q": {
         "command": "mcp-airq",
         "env": {
-          "AIRQ_DEVICES": "[{\\"address\\": \\"<IP>\\", \\"password\\": \\"<PW>\\", \\"name\\": \\"<Name>\\"}]"
+          "AIRQ_DEVICES": "<json-array — see above>"
         }
       }
     }
@@ -99,6 +100,9 @@ def main():
         return
 
     if args.help or sys.stdin.isatty():
+        print(
+            f"mcp-airq {__version__} — MCP server for air-Q air quality sensor devices\n"
+        )
         print(_HELP_TEXT, end="")
         return
 

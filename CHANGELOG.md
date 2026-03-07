@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.3] - 2026-03-07
+
+### Changed
+
+- Help text now shows the version number in the header line.
+- Replaced the confusing nested-JSON example in the help text with a clean
+  separate example for `AIRQ_DEVICES` to avoid unreadable `\"` escapes.
+- Improved test coverage from 89% to 99%.
+
 ## [1.1.2] - 2026-03-07
 
 ### Fixed
