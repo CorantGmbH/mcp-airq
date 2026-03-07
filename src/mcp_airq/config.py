@@ -12,6 +12,8 @@ class DeviceConfig:
     address: str
     password: str
     name: str
+    location: str | None = None
+    group: str | None = None
 
 
 def load_config() -> list[DeviceConfig]:
@@ -54,6 +56,8 @@ def load_config() -> list[DeviceConfig]:
                 address=entry["address"],
                 password=entry["password"],
                 name=entry.get("name", entry["address"]),
+                location=entry.get("location"),
+                group=entry.get("group"),
             )
         )
 

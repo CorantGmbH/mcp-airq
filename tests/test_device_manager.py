@@ -68,3 +68,63 @@ def test_get_config_for(single_device_manager):
     cfg = single_device_manager.get_config_for("TestDevice")
     assert cfg.address == "192.168.1.100"
     assert cfg.password == "testpass"
+
+
+def test_locations(multi_device_manager):
+    """locations returns unique configured locations."""
+    assert multi_device_manager.locations == ["Wohnzimmer"]
+
+
+def test_resolve_location(multi_device_manager):
+    """resolve_location returns all devices at a location."""
+    devices = multi_device_manager.resolve_location("Wohnzimmer")
+    names = [name for name, _ in devices]
+    assert names == ["Living Room", "Bedroom"]
+
+
+def test_resolve_location_substring(multi_device_manager):
+    """resolve_location supports case-insensitive substring matching."""
+    devices = multi_device_manager.resolve_location("wohnz")
+    assert len(devices) == 2
+
+
+def test_resolve_location_no_match(multi_device_manager):
+    """resolve_location raises on no match."""
+    with pytest.raises(ValueError, match="No devices with location"):
+        multi_device_manager.resolve_location("Küche")
+
+
+def test_resolve_location_no_locations(single_device_manager):
+    """resolve_location raises when no locations are configured."""
+    with pytest.raises(ValueError, match="No locations configured"):
+        single_device_manager.resolve_location("Anywhere")
+
+
+def test_groups(multi_device_manager):
+    """groups returns unique configured groups."""
+    assert set(multi_device_manager.groups) == {"zu Hause", "Arbeit"}
+
+
+def test_resolve_group(multi_device_manager):
+    """resolve_group returns all devices in a group."""
+    devices = multi_device_manager.resolve_group("zu Hause")
+    names = [name for name, _ in devices]
+    assert names == ["Living Room", "Bedroom"]
+
+
+def test_resolve_group_substring(multi_device_manager):
+    """resolve_group supports case-insensitive substring matching."""
+    devices = multi_device_manager.resolve_group("hause")
+    assert len(devices) == 2
+
+
+def test_resolve_group_no_match(multi_device_manager):
+    """resolve_group raises on no match."""
+    with pytest.raises(ValueError, match="No devices with group"):
+        multi_device_manager.resolve_group("Urlaub")
+
+
+def test_resolve_group_no_groups(single_device_manager):
+    """resolve_group raises when no groups are configured."""
+    with pytest.raises(ValueError, match="No groups configured"):
+        single_device_manager.resolve_group("Anywhere")

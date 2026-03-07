@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.1.0] - 2026-03-07
+
+### Added
+
+- **Location support**: Device configs now accept an optional `location` field
+  to group devices by physical location (e.g. `"location": "Wohnzimmer"`).
+- **Group support**: Device configs now accept an optional `group` field for
+  a second, orthogonal grouping dimension (e.g. `"group": "zu Hause"`). A device
+  can have both a location and a group independently.
+- `list_devices` includes `location` and `group` for each device when configured.
+- `get_air_quality` accepts `location` and `group` parameters to query all devices
+  in a given location or group at once, returning sensor data keyed by device name.
+  Exactly one of `device`, `location`, or `group` may be specified per call.
+- `DeviceManager.resolve_location()` and `resolve_group()` resolve by
+  case-insensitive substring matching across the respective field.
+
+### Internal
+
+- `DeviceManager._resolve_by()` private helper eliminates duplication between
+  location and group resolution.
+
 ## [1.0.2] - 2026-03-07
 
 ### Fixed

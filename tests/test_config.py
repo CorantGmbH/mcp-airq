@@ -1,7 +1,6 @@
 """Tests for config loading."""
 
 import json
-import os
 import pytest
 
 from mcp_airq.config import DeviceConfig, load_config
@@ -27,10 +26,12 @@ def test_load_from_env_single_device(monkeypatch):
 
 def test_load_from_env_multiple_devices(monkeypatch):
     """Load multiple devices from AIRQ_DEVICES."""
-    devices_json = json.dumps([
-        {"address": "192.168.1.1", "password": "p1", "name": "A"},
-        {"address": "192.168.1.2", "password": "p2", "name": "B"},
-    ])
+    devices_json = json.dumps(
+        [
+            {"address": "192.168.1.1", "password": "p1", "name": "A"},
+            {"address": "192.168.1.2", "password": "p2", "name": "B"},
+        ]
+    )
     monkeypatch.setenv("AIRQ_DEVICES", devices_json)
     configs = load_config()
     assert len(configs) == 2
@@ -42,6 +43,42 @@ def test_name_defaults_to_address(monkeypatch):
     monkeypatch.setenv("AIRQ_DEVICES", devices_json)
     configs = load_config()
     assert configs[0].name == "10.0.0.1"
+
+
+def test_location_is_optional(monkeypatch):
+    """Location defaults to None when omitted."""
+    devices_json = json.dumps([{"address": "10.0.0.1", "password": "pw"}])
+    monkeypatch.setenv("AIRQ_DEVICES", devices_json)
+    configs = load_config()
+    assert configs[0].location is None
+
+
+def test_location_is_loaded(monkeypatch):
+    """Location is parsed from config."""
+    devices_json = json.dumps(
+        [{"address": "10.0.0.1", "password": "pw", "location": "Wohnzimmer"}]
+    )
+    monkeypatch.setenv("AIRQ_DEVICES", devices_json)
+    configs = load_config()
+    assert configs[0].location == "Wohnzimmer"
+
+
+def test_group_is_optional(monkeypatch):
+    """Group defaults to None when omitted."""
+    devices_json = json.dumps([{"address": "10.0.0.1", "password": "pw"}])
+    monkeypatch.setenv("AIRQ_DEVICES", devices_json)
+    configs = load_config()
+    assert configs[0].group is None
+
+
+def test_group_is_loaded(monkeypatch):
+    """Group is parsed from config."""
+    devices_json = json.dumps(
+        [{"address": "10.0.0.1", "password": "pw", "group": "zu Hause"}]
+    )
+    monkeypatch.setenv("AIRQ_DEVICES", devices_json)
+    configs = load_config()
+    assert configs[0].group == "zu Hause"
 
 
 def test_load_from_file(monkeypatch, tmp_path):

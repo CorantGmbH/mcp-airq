@@ -1,9 +1,13 @@
 """Tests for read-only tools."""
 
+# pylint: disable=redefined-outer-name
 import json
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from mcp_airq.config import DeviceConfig
+from mcp_airq.devices import DeviceManager
 from mcp_airq.tools.read import (
     get_air_quality,
     get_config,
@@ -54,6 +58,20 @@ async def test_list_devices(mock_ctx):
     assert len(data) == 1
     assert data[0]["name"] == "TestDevice"
     assert data[0]["address"] == "192.168.1.100"
+    assert "location" not in data[0]  # no location configured
+    assert "group" not in data[0]  # no group configured
+
+
+@pytest.mark.asyncio
+async def test_list_devices_with_location(mock_session):
+    """list_devices includes location when configured."""
+    configs = [DeviceConfig("10.0.0.1", "pw", "MyAirQ", location="Wohnzimmer")]
+    mgr = DeviceManager(mock_session, configs)
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = mgr
+    result = await list_devices(ctx)
+    data = json.loads(result)
+    assert data[0]["location"] == "Wohnzimmer"
 
 
 @pytest.mark.asyncio
@@ -90,6 +108,79 @@ async def test_get_air_quality_with_options(mock_ctx, mock_airq):
             clip_negative_values=False,
             return_uncertainties=True,
         )
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_by_location(mock_session):
+    """get_air_quality with location queries all devices at that location."""
+    configs = [
+        DeviceConfig("10.0.0.1", "pw", "air-Q Basic", location="Wohnzimmer"),
+        DeviceConfig("10.0.0.2", "pw", "air-Q Radon", location="Wohnzimmer"),
+    ]
+    mgr = DeviceManager(mock_session, configs)
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = mgr
+
+    mock_airq_1 = AsyncMock()
+    mock_airq_1.get_latest_data.return_value = {"temperature": 22.0, "co2": 400}
+    mock_airq_2 = AsyncMock()
+    mock_airq_2.get_latest_data.return_value = {"temperature": 22.5, "radon": 50}
+
+    with patch.object(
+        mgr,
+        "resolve_location",
+        return_value=[
+            ("air-Q Basic", mock_airq_1),
+            ("air-Q Radon", mock_airq_2),
+        ],
+    ):
+        result = await get_air_quality(ctx, location="Wohnzimmer")
+        data = json.loads(result)
+        assert "air-Q Basic" in data
+        assert "air-Q Radon" in data
+        assert data["air-Q Basic"]["temperature"] == 22.0
+        assert data["air-Q Radon"]["radon"] == 50
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_multiple_selectors_rejected(mock_ctx):
+    """get_air_quality rejects more than one selector."""
+    result = await get_air_quality(mock_ctx, device="foo", location="bar")
+    assert "at most one" in result
+    result2 = await get_air_quality(mock_ctx, location="bar", group="baz")
+    assert "at most one" in result2
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_by_group(mock_session):
+    """get_air_quality with group queries all devices in that group."""
+    configs = [
+        DeviceConfig("10.0.0.1", "pw", "air-Q Wohnzimmer", group="zu Hause"),
+        DeviceConfig("10.0.0.2", "pw", "air-Q Büro", group="Arbeit"),
+        DeviceConfig("10.0.0.3", "pw", "air-Q Schlafzimmer", group="zu Hause"),
+    ]
+    mgr = DeviceManager(mock_session, configs)
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = mgr
+
+    mock_airq_1 = AsyncMock()
+    mock_airq_1.get_latest_data.return_value = {"temperature": 22.0}
+    mock_airq_3 = AsyncMock()
+    mock_airq_3.get_latest_data.return_value = {"temperature": 19.5}
+
+    with patch.object(
+        mgr,
+        "resolve_group",
+        return_value=[
+            ("air-Q Wohnzimmer", mock_airq_1),
+            ("air-Q Schlafzimmer", mock_airq_3),
+        ],
+    ):
+        result = await get_air_quality(ctx, group="zu Hause")
+        data = json.loads(result)
+        assert "air-Q Wohnzimmer" in data
+        assert "air-Q Schlafzimmer" in data
+        assert "air-Q Büro" not in data
 
 
 @pytest.mark.asyncio

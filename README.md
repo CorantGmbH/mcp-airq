@@ -31,8 +31,9 @@ Create a JSON file with your device(s), e.g. `~/.config/airq-devices.json`:
 
 ```json
 [
-  {"address": "192.168.4.1", "password": "your_password", "name": "Living Room"},
-  {"address": "office_air-q.local", "password": "other_pass", "name": "Office"}
+  {"address": "192.168.4.1", "password": "your_password", "name": "air-Q Pro", "location": "Living Room", "group": "Home"},
+  {"address": "192.168.4.2", "password": "your_password", "name": "air-Q Radon", "location": "Living Room", "group": "Home"},
+  {"address": "office_air-q.local", "password": "other_pass", "name": "Office", "group": "Work"}
 ]
 ```
 
@@ -40,6 +41,8 @@ Each entry requires:
 - `address` — IP address or mDNS hostname (e.g. `abcde_air-q.local`)
 - `password` — Device password (default: `airqsetup`)
 - `name` (optional) — Human-readable name; defaults to address
+- `location` (optional) — Physical room/area for grouping (e.g. `"Living Room"`)
+- `group` (optional) — Second grouping dimension, orthogonal to location (e.g. `"Home"`, `"Work"`)
 
 Then restrict access to the file (it contains passwords):
 
@@ -101,8 +104,8 @@ This writes to `~/.codex/config.toml` and is automatically picked up by the **Co
 
 | Tool                      | Description                                                          |
 | ------------------------- | -------------------------------------------------------------------- |
-| `list_devices`            | List all configured air-Q devices                                    |
-| `get_air_quality`         | Get current sensor readings (temperature, CO₂, humidity, PM, VOC, …) |
+| `list_devices`            | List all configured air-Q devices (with location/group if set)       |
+| `get_air_quality`         | Get sensor readings — by `device`, `location`, or `group`            |
 | `get_device_info`         | Get device metadata (name, model, firmware version)                  |
 | `get_config`              | Get full device configuration                                        |
 | `get_logs`                | Get device log entries                                               |
@@ -133,14 +136,34 @@ This writes to `~/.codex/config.toml` and is automatically picked up by the **Co
 
 When multiple devices are configured, specify which device to query:
 
-- By exact name: `"Living Room"`
-- By partial match (case-insensitive): `"living"`, `"office"`
+- By exact name: `"air-Q Pro"`
+- By partial match (case-insensitive): `"pro"`, `"radon"`
 
 If only one device is configured, it is selected automatically.
 
+### Location and Group Queries
+
+`get_air_quality` accepts two optional grouping parameters:
+
+- **`location`** — query all devices in the same room (e.g. `"Living Room"`)
+- **`group`** — query all devices sharing a group tag (e.g. `"Home"`)
+
+Both are independent: a device can have a location, a group, both, or neither.
+Matching is case-insensitive and substring-based.
+
+```text
+get_air_quality(location="Living Room")  → air-Q Pro + air-Q Radon
+get_air_quality(group="Home")            → air-Q Pro + air-Q Radon + …
+get_air_quality(device="air-Q Radon")   → just that one device
+```
+
+Exactly one of `device`, `location`, or `group` may be specified per call.
+
 ## Example Prompts
 
-- *"How is the air quality in the living room?"*
+- *"How is the air quality in the living room?"* — queries all devices at that location
+- *"What's the air quality at home?"* — queries all devices in the "Home" group
+- *"Show me the radon level"* — targets the air-Q Radon device by name
 - *"Show CO₂ on the LEDs"*
 - *"Enable night mode from 10 PM to 7 AM"*
 - *"Set brightness to 50%"*

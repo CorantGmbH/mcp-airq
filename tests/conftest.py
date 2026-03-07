@@ -1,7 +1,9 @@
 """Shared test fixtures."""
 
-import pytest
+# pylint: disable=redefined-outer-name
 from unittest.mock import MagicMock
+
+import pytest
 
 from mcp_airq.config import DeviceConfig
 from mcp_airq.devices import DeviceManager
@@ -21,11 +23,19 @@ def single_device_configs():
 
 @pytest.fixture
 def multi_device_configs():
-    """Config list with multiple devices."""
+    """Config list with multiple devices, some sharing a location and group."""
     return [
-        DeviceConfig("192.168.1.100", "pass1", "Living Room"),
-        DeviceConfig("192.168.1.101", "pass2", "Office"),
-        DeviceConfig("192.168.1.102", "pass3", "Bedroom"),
+        DeviceConfig(
+            "192.168.1.100",
+            "pass1",
+            "Living Room",
+            location="Wohnzimmer",
+            group="zu Hause",
+        ),
+        DeviceConfig("192.168.1.101", "pass2", "Office", group="Arbeit"),
+        DeviceConfig(
+            "192.168.1.102", "pass3", "Bedroom", location="Wohnzimmer", group="zu Hause"
+        ),
     ]
 
 
