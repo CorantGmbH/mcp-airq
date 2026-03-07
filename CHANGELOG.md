@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.2] - 2026-03-07
+
+### Fixed
+
+- `get_air_quality` and `get_config` now embed the full sensor/config guide
+  directly in every response (`_sensor_guide` / `_config_guide` fields) instead
+  of a short `_note` pointing to the prompt. This guarantees correct
+  interpretation of units and index semantics (e.g. `mold` is a mold-FREE index,
+  `tvoc` is in ppb) regardless of whether the client invokes the prompt.
+
+### Refactored
+
+- Extracted guide strings from `prompts.py` into a new `guides.py` module
+  (`SENSOR_GUIDE`, `CONFIG_GUIDE`). Both `prompts.py` and `tools/read.py`
+  import from there, keeping the content in one place.
+
 ## [1.0.1] - 2026-03-07
 
 ### Fixed

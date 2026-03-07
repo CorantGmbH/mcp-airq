@@ -7,6 +7,7 @@ from mcp.types import ToolAnnotations
 
 from mcp_airq.devices import DeviceManager
 from mcp_airq.errors import handle_airq_errors
+from mcp_airq.guides import CONFIG_GUIDE, SENSOR_GUIDE
 from mcp_airq.server import mcp
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
@@ -42,12 +43,8 @@ async def get_air_quality(
 
     Returns sensor names mapped to values. Set return_average=True for
     time-averaged data (recommended) or False for instantaneous readings.
-
-    IMPORTANT — index semantics (higher is always better):
-    - health, performance: 0–1000. Overall quality scores.
-    - mold (0–100 %): Mold-FREE index. 100 % = no mold risk. 0 % = ventilation needed.
-    - virus (0–100 %): Low-virus-transmission index. 100 % = fine. 0 % = ventilation needed.
-    Consult the airq_sensor_guide prompt for full units and ranges of all sensors.
+    The response includes a _sensor_guide field with full unit and index
+    documentation — read it before interpreting any values.
     """
     mgr = _manager(ctx)
     airq = mgr.resolve(device)
@@ -56,12 +53,7 @@ async def get_air_quality(
         clip_negative_values=clip_negative,
         return_uncertainties=include_uncertainties,
     )
-    data["_note"] = (
-        "Index semantics (higher=better): health/performance 0-1000. "
-        "mold: Mold-FREE index (100%=no risk, 0%=ventilation needed). "
-        "virus: Low-virus index (100%=fine, 0%=ventilation needed). "
-        "See airq_sensor_guide prompt for full sensor documentation."
-    )
+    data["_sensor_guide"] = SENSOR_GUIDE
     return json.dumps(data, indent=2, default=str)
 
 
@@ -80,15 +72,13 @@ async def get_device_info(ctx: Context, device: str | None = None) -> str:
 async def get_config(ctx: Context, device: str | None = None) -> str:
     """Get the full configuration of a device as a JSON dict.
 
-    Consult the airq_config_guide prompt for documentation of all configuration
-    keys, their types, defaults, and semantics.
+    The response includes a _config_guide field with full documentation of
+    all configuration keys — read it before interpreting or modifying values.
     """
     mgr = _manager(ctx)
     airq = mgr.resolve(device)
     config = await airq.get_config()
-    config["_note"] = (
-        "See airq_config_guide prompt for full documentation of all configuration keys."
-    )
+    config["_config_guide"] = CONFIG_GUIDE
     return json.dumps(config, indent=2, default=str)
 
 

@@ -77,6 +77,14 @@ Or via `AIRQ_CONFIG_FILE` pointing to a JSON file with the same structure.
 - Tests use `pytest` + `pytest-asyncio`, mock `AirQ` methods — no real device needed
 - Keep the tool layer thin: business logic belongs in `aioairq`, not here
 
+## Versioning
+
+When bumping the version, update it in **all three** of these files:
+
+1. `pyproject.toml` — `version = "x.y.z"`
+2. `server.json` — `"version": "x.y.z"` (appears twice: top-level and inside `packages[]`)
+3. `CHANGELOG.md` — add a new `## [x.y.z] - YYYY-MM-DD` section
+
 ## Related Projects
 
 - **aioairq**: `../../aioairq/` — the async Python library this server wraps
