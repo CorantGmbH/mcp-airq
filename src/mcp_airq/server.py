@@ -26,7 +26,8 @@ async def app_lifespan(_server: FastMCP) -> AsyncIterator[DeviceManager]:
     """Create shared aiohttp session and device manager for the server lifetime."""
     configs = load_config()
     logger.info("Starting air-Q MCP server with %d device(s)", len(configs))
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total=30, connect=15)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
         yield DeviceManager(session, configs)
 
 

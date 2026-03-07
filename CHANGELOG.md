@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.2] - 2026-03-07
+
+### Fixed
+
+- Increased `aiohttp.ClientSession` timeout to 30 s total / 15 s connect (was
+  aiohttp's built-in default of 5 s connect). Devices with high latency or slow
+  mDNS resolution are now reliably reachable.
+
 ## [1.1.1] - 2026-03-07
 
 ### Added
