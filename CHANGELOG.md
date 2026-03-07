@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.1] - 2026-03-07
+
+### Added
+
+- `mcp-airq --version` prints the installed version and exits.
+- `mcp-airq --help` (and `mcp-airq` called from an interactive terminal)
+  prints a human-readable description of the server, explains that it is
+  designed to be launched by an MCP client, and shows how to add it to
+  Claude Desktop and Claude Code.
+
 ## [1.1.0] - 2026-03-07
 
 ### Added
