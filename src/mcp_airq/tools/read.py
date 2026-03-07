@@ -42,6 +42,12 @@ async def get_air_quality(
 
     Returns sensor names mapped to values. Set return_average=True for
     time-averaged data (recommended) or False for instantaneous readings.
+
+    IMPORTANT — index semantics (higher is always better):
+    - health, performance: 0–1000. Overall quality scores.
+    - mold (0–100 %): Mold-FREE index. 100 % = no mold risk. 0 % = ventilation needed.
+    - virus (0–100 %): Low-virus-transmission index. 100 % = fine. 0 % = ventilation needed.
+    Consult the airq_sensor_guide prompt for full units and ranges of all sensors.
     """
     mgr = _manager(ctx)
     airq = mgr.resolve(device)
@@ -49,6 +55,12 @@ async def get_air_quality(
         return_average=return_average,
         clip_negative_values=clip_negative,
         return_uncertainties=include_uncertainties,
+    )
+    data["_note"] = (
+        "Index semantics (higher=better): health/performance 0-1000. "
+        "mold: Mold-FREE index (100%=no risk, 0%=ventilation needed). "
+        "virus: Low-virus index (100%=fine, 0%=ventilation needed). "
+        "See airq_sensor_guide prompt for full sensor documentation."
     )
     return json.dumps(data, indent=2, default=str)
 
@@ -66,10 +78,17 @@ async def get_device_info(ctx: Context, device: str | None = None) -> str:
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def get_config(ctx: Context, device: str | None = None) -> str:
-    """Get the full configuration of a device as a JSON dict."""
+    """Get the full configuration of a device as a JSON dict.
+
+    Consult the airq_config_guide prompt for documentation of all configuration
+    keys, their types, defaults, and semantics.
+    """
     mgr = _manager(ctx)
     airq = mgr.resolve(device)
     config = await airq.get_config()
+    config["_note"] = (
+        "See airq_config_guide prompt for full documentation of all configuration keys."
+    )
     return json.dumps(config, indent=2, default=str)
 
 

@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.0.1] - 2026-03-07
+
+### Fixed
+
+- `get_air_quality`: Sensor index semantics are now embedded directly in the
+  tool description and in every response via a `_note` field, ensuring that
+  `mold` and `virus` (both "free" indices where 100 % = best) and
+  `health`/`performance` (0–1000, higher = better) are always interpreted
+  correctly regardless of whether the `airq_sensor_guide` prompt is invoked.
+- `get_config`: Tool description now explicitly references `airq_config_guide`,
+  and every response includes a `_note` field pointing to that prompt.
+
+### Developer tooling
+
+- `pyrightconfig.json`: Added `pythonPath` pointing to the micromamba
+  environment so pyright resolves `aioairq`, `aiohttp`, and `mcp` correctly.
+
 ## [1.0.0] - 2026-03-07
 
 ### Prompts

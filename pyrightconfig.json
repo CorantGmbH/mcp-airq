@@ -5,5 +5,6 @@
     "**/.pytest_cache/**",
     "**/.github/**"
   ],
+  "extraPaths": ["/home/daniel/micromamba/lib/python3.11/site-packages"],
   "reportMissingImports": true
 }
