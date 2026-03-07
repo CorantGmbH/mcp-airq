@@ -51,6 +51,14 @@ pip install hatch
 hatch build
 ```
 
+> **Note:** The pre-commit hooks (`pytest`, `pylint`, `pyright`) use `language: system` and rely on PATH.
+> The project is installed in micromamba (`/home/daniel/micromamba`). When committing, ensure
+> micromamba/bin is first on PATH:
+>
+> ```bash
+> PATH="/home/daniel/micromamba/bin:$PATH" git commit -m "..."
+> ```
+
 ## Device Configuration
 
 Via environment variable `AIRQ_DEVICES` (JSON array):
