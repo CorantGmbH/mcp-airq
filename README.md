@@ -2,6 +2,7 @@
 
 ![MCP](https://img.shields.io/badge/MCP-compatible-purple)
 [![PyPI](https://img.shields.io/pypi/v/mcp-airq)](https://pypi.org/project/mcp-airq/)
+[![Total Downloads](https://img.shields.io/pepy/dt/mcp-airq)](https://pepy.tech/project/mcp-airq)
 [![Python](https://img.shields.io/pypi/pyversions/mcp-airq)](https://pypi.org/project/mcp-airq/)
 [![License](https://img.shields.io/pypi/l/mcp-airq)](LICENSE)
 [![Tests](https://github.com/CorantGmbH/mcp-airq/actions/workflows/tests.yml/badge.svg)](https://github.com/CorantGmbH/mcp-airq/actions/workflows/tests.yml)
