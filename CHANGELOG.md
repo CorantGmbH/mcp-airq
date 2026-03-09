@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.4] - 2026-03-09
+
+### Changed
+
+- `get_air_quality` now embeds a `_sensor_guide` filtered to only the sensors
+  present in the device response. Descriptions for sensors not reported by the
+  device are omitted, significantly reducing response size (up to ~90 % for
+  typical devices). The full guide is still available via the
+  `airq_sensor_guide` prompt.
+- Sensor guide data restructured from a static string into a typed, structured
+  list in `guides.py`. `build_sensor_guide(data_keys)` generates the filtered
+  Markdown guide; `SENSOR_GUIDE` (used by prompts) is derived from the same
+  source.
+
 ## [1.1.3] - 2026-03-07
 
 ### Changed

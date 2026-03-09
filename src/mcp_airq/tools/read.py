@@ -9,7 +9,7 @@ from mcp.types import ToolAnnotations
 
 from mcp_airq.devices import DeviceManager
 from mcp_airq.errors import handle_airq_errors
-from mcp_airq.guides import CONFIG_GUIDE, SENSOR_GUIDE
+from mcp_airq.guides import CONFIG_GUIDE, build_sensor_guide
 from mcp_airq.server import mcp
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
@@ -75,6 +75,7 @@ async def get_air_quality(
 
     if multi_devices is not None:
         results: dict[str, object] = {}
+        all_keys: set[str] = set()
         for name, airq in multi_devices:
             data = await airq.get_latest_data(
                 return_average=return_average,
@@ -82,7 +83,8 @@ async def get_air_quality(
                 return_uncertainties=include_uncertainties,
             )
             results[name] = data
-        results["_sensor_guide"] = SENSOR_GUIDE
+            all_keys.update(data.keys())
+        results["_sensor_guide"] = build_sensor_guide(all_keys)
         return json.dumps(results, indent=2, default=str)
 
     airq = mgr.resolve(device)
@@ -91,7 +93,7 @@ async def get_air_quality(
         clip_negative_values=clip_negative,
         return_uncertainties=include_uncertainties,
     )
-    data["_sensor_guide"] = SENSOR_GUIDE
+    data["_sensor_guide"] = build_sensor_guide(set(data.keys()))
     return json.dumps(data, indent=2, default=str)
 
 
