@@ -1,8 +1,12 @@
 """Device configuration loading from environment variables or config file."""
 
 import json
+import logging
 import os
+import stat
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -14,6 +18,23 @@ class DeviceConfig:
     name: str
     location: str | None = None
     group: str | None = None
+
+
+def _warn_if_world_readable(path: str) -> None:
+    """Log a warning if the config file is readable by group or others."""
+    try:
+        mode = os.stat(path).st_mode
+        if mode & (stat.S_IRGRP | stat.S_IROTH):
+            logger.warning(
+                "Config file '%s' is readable by group/others (mode %s). "
+                "This file contains device passwords. "
+                "Run 'chmod 600 %s' to restrict access.",
+                path,
+                oct(mode),
+                path,
+            )
+    except OSError:
+        pass  # file access errors are handled later when opening the file
 
 
 def load_config() -> list[DeviceConfig]:
@@ -34,6 +55,7 @@ def load_config() -> list[DeviceConfig]:
                 "No air-Q devices configured. Set AIRQ_DEVICES env var "
                 "(JSON array) or AIRQ_CONFIG_FILE (path to JSON file)."
             )
+        _warn_if_world_readable(config_file)
         with open(config_file, encoding="utf-8") as f:
             raw = f.read()
 

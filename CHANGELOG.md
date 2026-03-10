@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.1.5] - 2026-03-10
+
+### Changed
+
+- Raised minimum dependency versions to `mcp>=1.26.0` and `aiohttp>=3.13.0`,
+  eliminating 3 high-severity CVEs in the MCP SDK and 5 aiohttp CVEs.
+- Added `[project.urls]` to `pyproject.toml` (Homepage, Repository, Issues,
+  Changelog), enabling source-code verification from the PyPI package page.
+
+### Improved
+
+- `@handle_airq_errors` decorator now logs each caught exception with an
+  appropriate log level (`debug`, `warning`, or `error` with full traceback)
+  instead of silently discarding exception details.
+- Config file path is checked for world-readable permissions at startup; a
+  `WARNING` with a `chmod 600` hint is logged if group or other read bits are set.
+
 ## [1.1.4] - 2026-03-09
 
 ### Changed
