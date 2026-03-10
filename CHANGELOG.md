@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6] - 2026-03-10
+
+### Changed
+
+- Pinned minimum `aiohttp` version to `>=3.13.3` (latest release) to ensure
+  all known aiohttp CVEs are resolved for fresh installs.
+
 ## [1.1.5] - 2026-03-10
 
 ### Changed
