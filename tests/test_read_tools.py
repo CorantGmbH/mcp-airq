@@ -23,14 +23,6 @@ from mcp_airq.tools.read import (
 
 
 @pytest.fixture
-def mock_ctx(single_device_manager):
-    """Create a mock Context with the device manager as lifespan context."""
-    ctx = MagicMock()
-    ctx.request_context.lifespan_context = single_device_manager
-    return ctx
-
-
-@pytest.fixture
 def mock_ctx_with_group(mock_session):
     """Create a mock Context with a device that has a group configured."""
     configs = [DeviceConfig("10.0.0.1", "pw", "MyAirQ", group="zu Hause")]

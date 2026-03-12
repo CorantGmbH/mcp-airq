@@ -1,8 +1,9 @@
 """Tests for write tools."""
 
-import json
+# pylint: disable=redefined-outer-name
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from mcp_airq.tools.write import (
     configure_network,
@@ -11,14 +12,6 @@ from mcp_airq.tools.write import (
     set_led_theme,
     set_night_mode,
 )
-
-
-@pytest.fixture
-def mock_ctx(single_device_manager):
-    """Create a mock Context with the device manager as lifespan context."""
-    ctx = MagicMock()
-    ctx.request_context.lifespan_context = single_device_manager
-    return ctx
 
 
 @pytest.fixture
@@ -58,7 +51,7 @@ async def test_set_led_theme_one_side(mock_ctx, mock_airq):
     with patch.object(
         mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
     ):
-        result = await set_led_theme(mock_ctx, left="VOC")
+        await set_led_theme(mock_ctx, left="VOC")
         mock_airq.set_led_theme.assert_awaited_once_with({"left": "VOC"})
 
 

@@ -23,7 +23,8 @@ Claude Desktop/Code/Web
 | `config.py` | Loads device config from `AIRQ_DEVICES` env var or `AIRQ_CONFIG_FILE` |
 | `devices.py` | `DeviceManager`: caches `AirQ` instances, resolves device names (substring match) |
 | `errors.py` | `@handle_airq_errors` decorator — catches aioairq exceptions, returns readable strings |
-| `tools/read.py` | 6 read-only tools (list_devices, get_air_quality, get_device_info, get_config, get_logs, identify_device) |
+| `tools/_helpers.py` | Shared helpers: `_manager()`, `_resolve()`, `_json()` |
+| `tools/read.py` | 10 read-only tools (list_devices, get_air_quality, get_device_info, get_config, get_logs, identify_device, get_led_theme, get_possible_led_themes, get_night_mode, get_brightness_config) |
 | `tools/write.py` | 5 write tools (set_device_name, set_led_theme, set_night_mode, set_brightness, configure_network) |
 | `tools/dangerous.py` | 2 destructive tools (restart_device, shutdown_device) |
 
@@ -84,6 +85,16 @@ Or via `AIRQ_CONFIG_FILE` pointing to a JSON file with the same structure.
 - Tools use docstrings as their MCP description (FastMCP extracts them automatically)
 - Tests use `pytest` + `pytest-asyncio`, mock `AirQ` methods — no real device needed
 - Keep the tool layer thin: business logic belongs in `aioairq`, not here
+
+## Code Quality
+
+- **DRY**: Before completing a task, review changes for repeated patterns. Extract shared
+  helpers into `tools/_helpers.py` (tool code) or `tests/conftest.py` (test fixtures).
+- **Review before committing**: Run `git diff --staged` to verify changes are clean,
+  consistent, and don't introduce duplication. Run `pylint` and `pyright` on changed files
+  before committing to catch issues early.
+- **Consistent serialization**: Use `_json()` from `tools/_helpers.py` for JSON responses.
+  Use `json.dumps()` directly only for compact inline formatting (e.g. in f-strings).
 
 ## Versioning
 

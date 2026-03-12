@@ -5,24 +5,18 @@ import json
 from mcp.server.fastmcp import Context
 from mcp.types import ToolAnnotations
 
-from mcp_airq.devices import DeviceManager
 from mcp_airq.errors import handle_airq_errors
 from mcp_airq.server import mcp
+from mcp_airq.tools._helpers import _resolve
 
 WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True)
-
-
-def _manager(ctx: Context) -> DeviceManager:
-    """Extract DeviceManager from request context."""
-    return ctx.request_context.lifespan_context
 
 
 @mcp.tool(annotations=WRITE)
 @handle_airq_errors
 async def set_device_name(ctx: Context, name: str, device: str | None = None) -> str:
     """Rename a device. The new name appears on the device display."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     await airq.set_device_name(name)
     return f"Device name set to '{name}'."
 
@@ -40,8 +34,7 @@ async def set_led_theme(
     Common themes: 'standard', 'CO2', 'VOC', 'Humidity', 'PM2.5', 'Noise'.
     Use get_possible_led_themes to see all available themes.
     """
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     if left is None and right is None:
         return "Specify at least one of 'left' or 'right' theme."
     theme = {}
@@ -74,8 +67,7 @@ async def set_night_mode(
     wifi_night_off caches data to SD and uploads when wifi returns.
     alarm_night_off disables acoustic warnings (fire/gas still trigger).
     """
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     night_mode = {
         "activated": activated,
         "start_night": start_night,
@@ -100,8 +92,7 @@ async def set_brightness(
     device: str | None = None,
 ) -> str:
     """Set LED brightness. 'default' is the normal brightness (0-100%), 'night' is optional night brightness."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     await airq.set_brightness_config(default=default, night=night)
     result = f"Brightness set to {default}%"
     if night is not None:
@@ -128,8 +119,7 @@ async def configure_network(
 
     After changing network settings, the device must be restarted.
     """
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     if dhcp:
         await airq.set_ifconfig_dhcp()
         return "Network set to DHCP. Restart the device to apply."

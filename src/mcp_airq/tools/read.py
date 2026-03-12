@@ -1,23 +1,17 @@
 """Read-only tools for querying air-Q devices."""
 
-import json
 from collections.abc import Sequence
 
 from aioairq import AirQ
 from mcp.server.fastmcp import Context
 from mcp.types import ToolAnnotations
 
-from mcp_airq.devices import DeviceManager
 from mcp_airq.errors import handle_airq_errors
 from mcp_airq.guides import CONFIG_GUIDE, build_sensor_guide
 from mcp_airq.server import mcp
+from mcp_airq.tools._helpers import _json, _manager, _resolve
 
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
-
-
-def _manager(ctx: Context) -> DeviceManager:
-    """Extract DeviceManager from request context."""
-    return ctx.request_context.lifespan_context
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -34,7 +28,7 @@ async def list_devices(ctx: Context) -> str:
         if cfg.group is not None:
             entry["group"] = cfg.group
         devices.append(entry)
-    return json.dumps(devices, indent=2)
+    return _json(devices)
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -85,7 +79,7 @@ async def get_air_quality(
             results[name] = data
             all_keys.update(data.keys())
         results["_sensor_guide"] = build_sensor_guide(all_keys)
-        return json.dumps(results, indent=2, default=str)
+        return _json(results)
 
     airq = mgr.resolve(device)
     data = await airq.get_latest_data(
@@ -94,17 +88,16 @@ async def get_air_quality(
         return_uncertainties=include_uncertainties,
     )
     data["_sensor_guide"] = build_sensor_guide(set(data.keys()))
-    return json.dumps(data, indent=2, default=str)
+    return _json(data)
 
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def get_device_info(ctx: Context, device: str | None = None) -> str:
     """Get device metadata: ID, name, model, firmware/hardware version, and suggested area."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     info = await airq.fetch_device_info()
-    return json.dumps(dict(info), indent=2)
+    return _json(dict(info))
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -115,29 +108,26 @@ async def get_config(ctx: Context, device: str | None = None) -> str:
     The response includes a _config_guide field with full documentation of
     all configuration keys — read it before interpreting or modifying values.
     """
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     config = await airq.get_config()
     config["_config_guide"] = CONFIG_GUIDE
-    return json.dumps(config, indent=2, default=str)
+    return _json(config)
 
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def get_logs(ctx: Context, device: str | None = None) -> str:
     """Get log entries from a device."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     logs = await airq.get_log()
-    return json.dumps(logs, indent=2)
+    return _json(logs)
 
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def identify_device(ctx: Context, device: str | None = None) -> str:
     """Make a device blink its LEDs in rainbow colors for visual identification. Returns the device ID."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     device_id = await airq.blink()
     return f"Device is blinking. Device ID: {device_id}"
 
@@ -146,37 +136,33 @@ async def identify_device(ctx: Context, device: str | None = None) -> str:
 @handle_airq_errors
 async def get_led_theme(ctx: Context, device: str | None = None) -> str:
     """Get the current LED visualization theme for both sides of a device."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     theme = await airq.get_led_theme()
-    return json.dumps(theme, indent=2)
+    return _json(theme)
 
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def get_possible_led_themes(ctx: Context, device: str | None = None) -> str:
     """List all available LED visualization themes for a device."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     themes = await airq.get_possible_led_themes()
-    return json.dumps(themes, indent=2)
+    return _json(themes)
 
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def get_night_mode(ctx: Context, device: str | None = None) -> str:
     """Get the current night mode configuration of a device."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     night_mode = await airq.get_night_mode()
-    return json.dumps(night_mode, indent=2)
+    return _json(night_mode)
 
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
 async def get_brightness_config(ctx: Context, device: str | None = None) -> str:
     """Get the current LED brightness configuration (day and night values) of a device."""
-    mgr = _manager(ctx)
-    airq = mgr.resolve(device)
+    _, airq = _resolve(ctx, device)
     brightness = await airq.get_brightness_config()
-    return json.dumps(brightness, indent=2)
+    return _json(brightness)

@@ -1,17 +1,11 @@
 """Tests for dangerous tools (restart, shutdown)."""
 
+# pylint: disable=redefined-outer-name
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from mcp_airq.tools.dangerous import restart_device, shutdown_device
-
-
-@pytest.fixture
-def mock_ctx(single_device_manager):
-    """Create a mock Context with the device manager as lifespan context."""
-    ctx = MagicMock()
-    ctx.request_context.lifespan_context = single_device_manager
-    return ctx
 
 
 @pytest.fixture

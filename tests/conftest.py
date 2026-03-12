@@ -49,3 +49,11 @@ def single_device_manager(mock_session, single_device_configs):
 def multi_device_manager(mock_session, multi_device_configs):
     """DeviceManager with multiple devices."""
     return DeviceManager(mock_session, multi_device_configs)
+
+
+@pytest.fixture
+def mock_ctx(single_device_manager):
+    """Create a mock Context with the device manager as lifespan context."""
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = single_device_manager
+    return ctx
