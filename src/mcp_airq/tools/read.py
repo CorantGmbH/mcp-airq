@@ -1,7 +1,10 @@
 """Read-only tools for querying air-Q devices."""
 
+import logging
 from collections.abc import Sequence
+from datetime import datetime, timedelta, timezone
 
+import aiohttp
 from aioairq import AirQ
 from mcp.server.fastmcp import Context
 from mcp.types import ToolAnnotations
@@ -11,7 +14,115 @@ from mcp_airq.guides import CONFIG_GUIDE, build_sensor_guide
 from mcp_airq.server import mcp
 from mcp_airq.tools._helpers import _json, _manager, _resolve
 
+logger = logging.getLogger(__name__)
+
 READ_ONLY = ToolAnnotations(readOnlyHint=True, destructiveHint=False)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for get_air_quality_history
+# ---------------------------------------------------------------------------
+
+
+def _parse_time_range(
+    now: datetime,
+    last_hours: float | None,
+    from_datetime: str | None,
+    to_datetime: str | None,
+) -> tuple[datetime, datetime] | str:
+    """Parse time range parameters. Returns (from_dt, to_dt) or an error string."""
+    if from_datetime is not None:
+        from_dt = datetime.fromisoformat(from_datetime)
+        if from_dt.tzinfo is None:
+            from_dt = from_dt.replace(tzinfo=timezone.utc)
+        to_dt = now
+        if to_datetime is not None:
+            to_dt = datetime.fromisoformat(to_datetime)
+            if to_dt.tzinfo is None:
+                to_dt = to_dt.replace(tzinfo=timezone.utc)
+    else:
+        hours = last_hours if last_hours is not None else 1.0
+        if hours <= 0:
+            return "last_hours must be positive."
+        from_dt = now - timedelta(hours=hours)
+        to_dt = now
+    if from_dt >= to_dt:
+        return "from_datetime must be before to_datetime."
+    return from_dt, to_dt
+
+
+def _filter_sensors(data: list[dict], sensors: list[str]) -> list[dict]:
+    """Keep only the requested sensor keys (plus datetime/timestamp) in each entry."""
+    keep = {s.lower() for s in sensors} | {"datetime", "timestamp", "deviceid"}
+    return [{k: v for k, v in entry.items() if k.lower() in keep} for entry in data]
+
+
+def _downsample(data: list[dict], max_points: int) -> list[dict]:
+    """Evenly downsample a list to at most max_points entries."""
+    n = len(data)
+    if n <= max_points:
+        return data
+    step = n / max_points
+    return [data[int(i * step)] for i in range(max_points)]
+
+
+_FILE_BUFFER_S = 300  # seconds of slack when pre-filtering file names
+
+
+async def _collect_historical_data(  # pylint: disable=too-many-locals
+    airq: AirQ, from_dt: datetime, to_dt: datetime
+) -> list[dict]:
+    """Download historical data files from the device and filter to the requested time range."""
+    from_ms = int(from_dt.timestamp() * 1000)
+    to_ms = int(to_dt.timestamp() * 1000)
+    from_s = from_ms // 1000
+    to_s = to_ms // 1000
+
+    all_data: list[dict] = []
+    current_date = from_dt.date()
+    end_date = to_dt.date()
+
+    while current_date <= end_date:
+        day_path = f"{current_date.year}/{current_date.month}/{current_date.day}"
+        try:
+            file_names = await airq.get_historical_files_list(day_path)
+        except aiohttp.ClientResponseError as exc:
+            if exc.status == 404:
+                logger.debug("No historical data for %s (HTTP 404)", day_path)
+                current_date += timedelta(days=1)
+                continue
+            raise
+        except aiohttp.ClientError:
+            logger.debug(
+                "Could not list historical files for %s", day_path, exc_info=True
+            )
+            current_date += timedelta(days=1)
+            continue
+
+        for name in file_names:
+            try:
+                file_ts = int(name)
+            except ValueError:
+                continue
+            if file_ts < from_s - _FILE_BUFFER_S or file_ts > to_s:
+                continue
+
+            file_path = f"{day_path}/{name}"
+            try:
+                measurements = await airq.get_historical_file(file_path)
+            except aiohttp.ClientError:
+                logger.debug("Could not download %s", file_path, exc_info=True)
+                continue
+
+            for entry in measurements:
+                ts = entry.get("timestamp", 0)
+                if from_ms <= ts <= to_ms:
+                    all_data.append(entry)
+
+        current_date += timedelta(days=1)
+
+    all_data.sort(key=lambda m: m.get("timestamp", 0))
+    return all_data
 
 
 @mcp.tool(annotations=READ_ONLY)
@@ -166,3 +277,83 @@ async def get_brightness_config(ctx: Context, device: str | None = None) -> str:
     _, airq = _resolve(ctx, device)
     brightness = await airq.get_brightness_config()
     return _json(brightness)
+
+
+@mcp.tool(annotations=READ_ONLY)
+@handle_airq_errors
+async def get_air_quality_history(  # pylint: disable=too-many-arguments
+    ctx: Context,
+    device: str | None = None,
+    last_hours: float | None = None,
+    from_datetime: str | None = None,
+    to_datetime: str | None = None,
+    sensors: list[str] | None = None,
+    max_points: int | None = None,
+) -> str:
+    """Get historical air quality data stored on the device's SD card.
+
+    IMPORTANT — response size: air-Q records every ~2 minutes, so long ranges
+    produce large responses (24 h ≈ 720 readings × ~25 sensors). Always use
+    'sensors' and 'max_points' when querying more than 1–2 hours to stay within
+    response size limits. Example for a 24 h chart: sensors=["pm1","pm2_5","pm10"],
+    max_points=150.
+
+    Time range — specify one of:
+    - 'last_hours' — data from the last N hours (default: 1 hour)
+    - 'from_datetime' / 'to_datetime' — ISO 8601 strings
+      (e.g. "2026-03-10T14:00:00" or "2026-03-10T14:00:00+01:00")
+      'from_datetime' takes precedence over 'last_hours'.
+      'to_datetime' defaults to now.
+
+    Optional filtering:
+    - 'sensors' — sensor names to include (e.g. ["pm1", "pm2_5", "pm10"]).
+      datetime and timestamp are always kept. Omit to get all sensors.
+      Valid sensor names (device-dependent):
+        Climate:    temperature, humidity, humidity_abs, dewpt,
+                    pressure, pressure_rel
+        Gases:      co2, tvoc, tvoc_ionsc, co, no2, so2, o3, h2s, oxygen,
+                    n2o, nh3_MR100, no_M250, hcl, hcn, hf, ph3, sih4,
+                    br2, cl2_M20, clo2, cs2, f2, c2h4, c2h4o, ch2o_M10,
+                    ch4s, ethanol, acid_M100, h2_M1000, h2o2, ash3,
+                    ch4_MIPEX, c3h8_MIPEX, r32, r454b, r454c
+        Particles:  pm1, pm2_5, pm10, TypPS,
+                    cnt0_3, cnt0_5, cnt1, cnt2_5, cnt5, cnt10,
+                    pm1_SPS30, pm2_5_SPS30, pm4_SPS30, pm10_SPS30,
+                    cnt0_5_SPS30, cnt1_SPS30, cnt2_5_SPS30, cnt4_SPS30,
+                    cnt10_SPS30, TypPS_SPS30
+        Acoustics:  sound, sound_max
+        Radon:      radon
+        Indices:    health, performance, mold, virus
+        Other:      flow1, flow2, flow3, flow4, wifi
+    - 'max_points' — downsample to at most this many evenly spaced points.
+    """
+    _, airq = _resolve(ctx, device)
+
+    time_range = _parse_time_range(
+        datetime.now(timezone.utc), last_hours, from_datetime, to_datetime
+    )
+    if isinstance(time_range, str):
+        return time_range
+    from_dt, to_dt = time_range
+
+    data = await _collect_historical_data(airq, from_dt, to_dt)
+
+    if sensors:
+        data = _filter_sensors(data, sensors)
+
+    if max_points is not None and max_points > 0:
+        data = _downsample(data, max_points)
+
+    result: dict[str, object] = {
+        "from": from_dt.isoformat(),
+        "to": to_dt.isoformat(),
+        "count": len(data),
+        "data": data,
+    }
+
+    all_keys = set().union(*(entry.keys() for entry in data)) if data else set()
+    guide = build_sensor_guide(all_keys)
+    if guide:
+        result["_sensor_guide"] = guide
+
+    return _json(result)

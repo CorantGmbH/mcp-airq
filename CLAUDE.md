@@ -24,7 +24,7 @@ Claude Desktop/Code/Web
 | `devices.py` | `DeviceManager`: caches `AirQ` instances, resolves device names (substring match) |
 | `errors.py` | `@handle_airq_errors` decorator — catches aioairq exceptions, returns readable strings |
 | `tools/_helpers.py` | Shared helpers: `_manager()`, `_resolve()`, `_json()` |
-| `tools/read.py` | 10 read-only tools (list_devices, get_air_quality, get_device_info, get_config, get_logs, identify_device, get_led_theme, get_possible_led_themes, get_night_mode, get_brightness_config) |
+| `tools/read.py` | 11 read-only tools (list_devices, get_air_quality, get_air_quality_history, get_device_info, get_config, get_logs, identify_device, get_led_theme, get_possible_led_themes, get_night_mode, get_brightness_config) |
 | `tools/write.py` | 5 write tools (set_device_name, set_led_theme, set_night_mode, set_brightness, configure_network) |
 | `tools/dangerous.py` | 2 destructive tools (restart_device, shutdown_device) |
 

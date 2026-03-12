@@ -2,14 +2,21 @@
 
 # pylint: disable=redefined-outer-name
 import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import aiohttp
 import pytest
 
 from mcp_airq.config import DeviceConfig
 from mcp_airq.devices import DeviceManager
 from mcp_airq.tools.read import (
+    _collect_historical_data,
+    _downsample,
+    _filter_sensors,
+    _parse_time_range,
     get_air_quality,
+    get_air_quality_history,
     get_brightness_config,
     get_config,
     get_device_info,
@@ -292,3 +299,462 @@ async def test_get_brightness_config(mock_ctx, mock_airq):
         result = await get_brightness_config(mock_ctx)
         data = json.loads(result)
         assert data["day"] == 80
+
+
+# ---------------------------------------------------------------------------
+# _parse_time_range helper tests
+# ---------------------------------------------------------------------------
+
+NOW = datetime(2026, 3, 12, 12, 0, 0, tzinfo=timezone.utc)
+
+
+def test_parse_time_range_default_one_hour():
+    """Defaults to last 1 hour when no arguments given."""
+    from_dt, to_dt = _parse_time_range(NOW, None, None, None)
+    assert to_dt == NOW
+    assert from_dt == NOW - timedelta(hours=1)
+
+
+def test_parse_time_range_custom_hours():
+    """Accepts a custom last_hours value."""
+    from_dt, to_dt = _parse_time_range(NOW, 6.0, None, None)
+    assert from_dt == NOW - timedelta(hours=6)
+    assert to_dt == NOW
+
+
+def test_parse_time_range_negative_hours():
+    """Rejects non-positive last_hours."""
+    result = _parse_time_range(NOW, -1, None, None)
+    assert isinstance(result, str)
+    assert "positive" in result
+
+
+def test_parse_time_range_from_to():
+    """Accepts both from_datetime and to_datetime."""
+    result = _parse_time_range(
+        NOW, None, "2026-03-12T10:00:00+00:00", "2026-03-12T11:00:00+00:00"
+    )
+    from_dt, to_dt = result
+    assert from_dt.hour == 10
+    assert to_dt.hour == 11
+
+
+def test_parse_time_range_from_only():
+    """Defaults to_datetime to now when only from_datetime is given."""
+    from_dt, to_dt = _parse_time_range(NOW, None, "2026-03-12T10:00:00+00:00", None)
+    assert from_dt.hour == 10
+    assert to_dt == NOW
+
+
+def test_parse_time_range_naive_datetime():
+    """Naive datetimes get UTC timezone attached."""
+    from_dt, to_dt = _parse_time_range(
+        NOW, None, "2026-03-12T10:00:00", "2026-03-12T11:00:00"
+    )
+    assert from_dt.tzinfo == timezone.utc
+    assert to_dt.tzinfo == timezone.utc
+
+
+def test_parse_time_range_from_after_to():
+    """Rejects from_datetime >= to_datetime."""
+    result = _parse_time_range(
+        NOW, None, "2026-03-12T12:00:00+00:00", "2026-03-12T11:00:00+00:00"
+    )
+    assert isinstance(result, str)
+    assert "before" in result
+
+
+# ---------------------------------------------------------------------------
+# _filter_sensors / _downsample helper tests
+# ---------------------------------------------------------------------------
+
+
+def test_filter_sensors_keeps_timestamp():
+    """Always keeps timestamp and datetime keys."""
+    data = [{"temperature": 22.0, "co2": 400, "timestamp": 1000, "datetime": "x"}]
+    result = _filter_sensors(data, ["co2"])
+    assert "co2" in result[0]
+    assert "timestamp" in result[0]
+    assert "datetime" in result[0]
+    assert "temperature" not in result[0]
+
+
+def test_filter_sensors_case_insensitive():
+    """Sensor filter is case-insensitive."""
+    data = [{"CO2": 400, "Temperature": 22.0, "timestamp": 1000}]
+    result = _filter_sensors(data, ["co2"])
+    assert "CO2" in result[0]
+    assert "Temperature" not in result[0]
+
+
+def test_downsample_fewer_than_max():
+    """No effect when data has fewer entries than max_points."""
+    data = [{"v": i} for i in range(5)]
+    assert _downsample(data, 100) is data
+
+
+def test_downsample_evenly_spaced():
+    """Correctly downsamples to evenly spaced entries."""
+    data = [{"v": i} for i in range(100)]
+    result = _downsample(data, 10)
+    assert len(result) == 10
+    assert result[0]["v"] == 0
+    assert result[1]["v"] == 10
+
+
+# ---------------------------------------------------------------------------
+# _collect_historical_data tests
+# ---------------------------------------------------------------------------
+
+# 2026-03-12 10:00:00 UTC
+_TS_BASE = int(datetime(2026, 3, 12, 10, 0, 0, tzinfo=timezone.utc).timestamp())
+
+
+def _make_mock_airq(file_names, measurements):
+    """Create a mock AirQ with historical data methods."""
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(return_value=file_names)
+    airq.get_historical_file = AsyncMock(return_value=measurements)
+    return airq
+
+
+@pytest.mark.asyncio
+async def test_collect_historical_data_single_day():
+    """Collects data from files within a single day."""
+    measurements = [
+        {"timestamp": _TS_BASE * 1000, "temperature": 22.0},
+        {"timestamp": (_TS_BASE + 120) * 1000, "temperature": 22.5},
+    ]
+    airq = _make_mock_airq([str(_TS_BASE)], measurements)
+
+    from_dt = datetime(2026, 3, 12, 9, 55, 0, tzinfo=timezone.utc)
+    to_dt = datetime(2026, 3, 12, 10, 5, 0, tzinfo=timezone.utc)
+    result = await _collect_historical_data(airq, from_dt, to_dt)
+
+    assert len(result) == 2
+    assert result[0]["temperature"] == 22.0
+
+
+@pytest.mark.asyncio
+async def test_collect_historical_data_multi_day():
+    """Enumerates multiple days when range spans midnight."""
+    from_dt = datetime(2026, 3, 11, 23, 0, 0, tzinfo=timezone.utc)
+    to_dt = datetime(2026, 3, 12, 1, 0, 0, tzinfo=timezone.utc)
+
+    ts_day1 = int(from_dt.timestamp())
+    ts_day2 = int(datetime(2026, 3, 12, 0, 30, 0, tzinfo=timezone.utc).timestamp())
+
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(
+        side_effect=[[str(ts_day1)], [str(ts_day2)]]
+    )
+    airq.get_historical_file = AsyncMock(
+        side_effect=[
+            [{"timestamp": ts_day1 * 1000, "co2": 400}],
+            [{"timestamp": ts_day2 * 1000, "co2": 410}],
+        ]
+    )
+
+    result = await _collect_historical_data(airq, from_dt, to_dt)
+    assert len(result) == 2
+    assert airq.get_historical_files_list.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_collect_historical_data_skips_missing_day():
+    """Gracefully skips days that return HTTP 404."""
+    from_dt = datetime(2026, 3, 12, 10, 0, 0, tzinfo=timezone.utc)
+    to_dt = datetime(2026, 3, 12, 11, 0, 0, tzinfo=timezone.utc)
+
+    mock_resp = MagicMock()
+    mock_resp.status = 404
+    mock_resp.message = "Not Found"
+    mock_resp.headers = {}
+
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(
+        side_effect=aiohttp.ClientResponseError(mock_resp, (), status=404)
+    )
+
+    result = await _collect_historical_data(airq, from_dt, to_dt)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_collect_historical_data_filters_by_timestamp():
+    """Only keeps measurements within [from_ms, to_ms]."""
+    ts_in = _TS_BASE * 1000
+    ts_out = (_TS_BASE + 7200) * 1000  # 2 hours later — outside range
+
+    airq = _make_mock_airq(
+        [str(_TS_BASE)],
+        [
+            {"timestamp": ts_in, "temperature": 22.0},
+            {"timestamp": ts_out, "temperature": 25.0},
+        ],
+    )
+
+    from_dt = datetime(2026, 3, 12, 9, 55, 0, tzinfo=timezone.utc)
+    to_dt = datetime(2026, 3, 12, 10, 5, 0, tzinfo=timezone.utc)
+    result = await _collect_historical_data(airq, from_dt, to_dt)
+
+    assert len(result) == 1
+    assert result[0]["temperature"] == 22.0
+
+
+@pytest.mark.asyncio
+async def test_collect_historical_data_sorts_by_timestamp():
+    """Output is sorted chronologically."""
+    ts1 = _TS_BASE * 1000
+    ts2 = (_TS_BASE + 60) * 1000
+    ts3 = (_TS_BASE + 120) * 1000
+
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(
+        return_value=[str(_TS_BASE + 120), str(_TS_BASE)]
+    )
+    airq.get_historical_file = AsyncMock(
+        side_effect=[
+            [{"timestamp": ts3, "v": 3}],
+            [{"timestamp": ts1, "v": 1}, {"timestamp": ts2, "v": 2}],
+        ]
+    )
+
+    from_dt = datetime(2026, 3, 12, 9, 55, 0, tzinfo=timezone.utc)
+    to_dt = datetime(2026, 3, 12, 10, 5, 0, tzinfo=timezone.utc)
+    result = await _collect_historical_data(airq, from_dt, to_dt)
+
+    timestamps = [m["timestamp"] for m in result]
+    assert timestamps == sorted(timestamps)
+
+
+@pytest.mark.asyncio
+async def test_collect_historical_data_empty():
+    """Returns empty list when no files match."""
+    airq = _make_mock_airq([], [])
+
+    from_dt = datetime(2026, 3, 12, 10, 0, 0, tzinfo=timezone.utc)
+    to_dt = datetime(2026, 3, 12, 11, 0, 0, tzinfo=timezone.utc)
+    result = await _collect_historical_data(airq, from_dt, to_dt)
+
+    assert result == []
+
+
+# ---------------------------------------------------------------------------
+# get_air_quality_history tool integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_airq_with_history():
+    """Create a mock AirQ with historical data methods configured."""
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE)])
+    airq.get_historical_file = AsyncMock(
+        return_value=[
+            {"timestamp": _TS_BASE * 1000, "temperature": 22.0, "co2": 400},
+            {"timestamp": (_TS_BASE + 120) * 1000, "temperature": 22.5, "co2": 410},
+        ]
+    )
+    return airq
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_default_last_hour(
+    mock_ctx, mock_airq_with_history
+):
+    """Defaults to last 1 hour."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(mock_ctx)
+        data = json.loads(result)
+        assert "count" in data
+        assert "data" in data
+        assert "from" in data
+        assert "to" in data
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_custom_hours(mock_ctx, mock_airq_with_history):
+    """Accepts custom last_hours."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(mock_ctx, last_hours=6.0)
+        data = json.loads(result)
+        assert "data" in data
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_from_to(mock_ctx, mock_airq_with_history):
+    """Accepts from_datetime and to_datetime."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+        )
+        data = json.loads(result)
+        assert data["count"] == 2
+        assert "2026-03-12" in data["from"]
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_from_only(mock_ctx, mock_airq_with_history):
+    """Defaults to_datetime to now when only from_datetime is given."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx, from_datetime="2026-03-12T09:00:00+00:00"
+        )
+        data = json.loads(result)
+        assert "data" in data
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_negative_hours(mock_ctx):
+    """Rejects non-positive last_hours."""
+    result = await get_air_quality_history(mock_ctx, last_hours=-1)
+    assert "positive" in result
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_from_after_to(mock_ctx):
+    """Rejects from_datetime >= to_datetime."""
+    result = await get_air_quality_history(
+        mock_ctx,
+        from_datetime="2026-03-12T12:00:00+00:00",
+        to_datetime="2026-03-12T11:00:00+00:00",
+    )
+    assert "before" in result
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_includes_sensor_guide(
+    mock_ctx, mock_airq_with_history
+):
+    """Response includes _sensor_guide when data is present."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+        )
+        data = json.loads(result)
+        assert "_sensor_guide" in data
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_sensors_filter(mock_ctx, mock_airq_with_history):
+    """Filters to requested sensors only."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            sensors=["co2"],
+        )
+        data = json.loads(result)
+        for entry in data["data"]:
+            assert "co2" in entry
+            assert "timestamp" in entry
+            assert "temperature" not in entry
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_max_points(mock_ctx):
+    """Downsamples to max_points."""
+    measurements = [
+        {"timestamp": (_TS_BASE + i * 120) * 1000, "temperature": 20.0 + i * 0.1}
+        for i in range(100)
+    ]
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE)])
+    airq.get_historical_file = AsyncMock(return_value=measurements)
+
+    with patch.object(
+        mock_ctx.request_context.lifespan_context, "resolve", return_value=airq
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T14:00:00+00:00",
+            max_points=10,
+        )
+        data = json.loads(result)
+        assert data["count"] == 10
+        assert len(data["data"]) == 10
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_sensors_and_max_points(mock_ctx):
+    """Applies both sensors filter and max_points."""
+    measurements = [
+        {
+            "timestamp": (_TS_BASE + i * 120) * 1000,
+            "temperature": 20.0 + i,
+            "pm10": float(i),
+        }
+        for i in range(50)
+    ]
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE)])
+    airq.get_historical_file = AsyncMock(return_value=measurements)
+
+    with patch.object(
+        mock_ctx.request_context.lifespan_context, "resolve", return_value=airq
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T12:00:00+00:00",
+            sensors=["pm10"],
+            max_points=5,
+        )
+        data = json.loads(result)
+        assert data["count"] == 5
+        for entry in data["data"]:
+            assert "pm10" in entry
+            assert "timestamp" in entry
+            assert "temperature" not in entry
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_empty_data(mock_ctx):
+    """Gracefully handles empty data."""
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(return_value=[])
+    airq.get_historical_file = AsyncMock(return_value=[])
+
+    with patch.object(
+        mock_ctx.request_context.lifespan_context, "resolve", return_value=airq
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+        )
+        data = json.loads(result)
+        assert data["count"] == 0
+        assert data["data"] == []
+        assert "_sensor_guide" not in data

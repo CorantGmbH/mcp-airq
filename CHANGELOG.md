@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0] - 2026-03-12
+
+### Added
+
+- New `get_air_quality_history` tool: retrieves historical air quality data
+  stored on the device's SD card. Accepts the same time-range interface as the
+  Cloud MCP (`last_hours`, `from_datetime`/`to_datetime`, `sensors`,
+  `max_points`). Internally navigates the device's year/month/day file
+  hierarchy, downloads matching files (compressed via `/file_zlib` when
+  available), and filters/downsamples the results. Requires aioairq ≥ 0.5.0.
+- Bumped minimum `aioairq` version to `>=0.5.0` (adds
+  `get_historical_files_list` and `get_historical_file` API).
+
 ## [1.1.6] - 2026-03-10
 
 ### Changed
