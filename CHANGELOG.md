@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.3.0] - 2026-03-13
+
+### Changed
+
+- All sensor keys in `get_air_quality` and `get_air_quality_history` output are
+  now normalized to lowercase (e.g. `TypPS` → `typps`, `DeviceID` → `deviceid`,
+  `ch2o_M10` → `ch2o_m10`). This aligns the local MCP server output with the
+  air-Q Cloud API, which already uses lowercase keys.
+- Sensor guide display names updated to lowercase accordingly.
+
 ## [1.2.1] - 2026-03-13
 
 ### Changed

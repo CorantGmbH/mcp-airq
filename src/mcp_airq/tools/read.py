@@ -105,6 +105,11 @@ def _to_columnar(data: list[dict]) -> dict[str, list]:
     return cols
 
 
+def _lower_keys(data: dict) -> dict:
+    """Lowercase all dict keys."""
+    return {k.lower(): v for k, v in data.items()}
+
+
 _FILE_BUFFER_S = 300  # seconds of slack when pre-filtering file names
 
 
@@ -226,6 +231,7 @@ async def get_air_quality(
                 clip_negative_values=clip_negative,
                 return_uncertainties=include_uncertainties,
             )
+            data = _lower_keys(data)
             results[name] = data
             all_keys.update(data.keys())
         results["_sensor_guide"] = build_sensor_guide(all_keys)
@@ -237,6 +243,7 @@ async def get_air_quality(
         clip_negative_values=clip_negative,
         return_uncertainties=include_uncertainties,
     )
+    data = _lower_keys(data)
     data["_sensor_guide"] = build_sensor_guide(set(data.keys()))
     return _json(data)
 
@@ -355,15 +362,15 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments, too-ma
         Climate:    temperature, humidity, humidity_abs, dewpt,
                     pressure, pressure_rel
         Gases:      co2, tvoc, tvoc_ionsc, co, no2, so2, o3, h2s, oxygen,
-                    n2o, nh3_MR100, no_M250, hcl, hcn, hf, ph3, sih4,
-                    br2, cl2_M20, clo2, cs2, f2, c2h4, c2h4o, ch2o_M10,
-                    ch4s, ethanol, acid_M100, h2_M1000, h2o2, ash3,
-                    ch4_MIPEX, c3h8_MIPEX, r32, r454b, r454c
-        Particles:  pm1, pm2_5, pm10, TypPS,
+                    n2o, nh3_mr100, no_m250, hcl, hcn, hf, ph3, sih4,
+                    br2, cl2_m20, clo2, cs2, f2, c2h4, c2h4o, ch2o_m10,
+                    ch4s, ethanol, acid_m100, h2_m1000, h2o2, ash3,
+                    ch4_mipex, c3h8_mipex, r32, r454b, r454c
+        Particles:  pm1, pm2_5, pm10, typps,
                     cnt0_3, cnt0_5, cnt1, cnt2_5, cnt5, cnt10,
-                    pm1_SPS30, pm2_5_SPS30, pm4_SPS30, pm10_SPS30,
-                    cnt0_5_SPS30, cnt1_SPS30, cnt2_5_SPS30, cnt4_SPS30,
-                    cnt10_SPS30, TypPS_SPS30
+                    pm1_sps30, pm2_5_sps30, pm4_sps30, pm10_sps30,
+                    cnt0_5_sps30, cnt1_sps30, cnt2_5_sps30, cnt4_sps30,
+                    cnt10_sps30, typps_sps30
         Acoustics:  sound, sound_max
         Radon:      radon
         Indices:    health, performance, mold, virus
@@ -383,6 +390,7 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments, too-ma
     from_dt, to_dt = time_range
 
     data = await _collect_historical_data(airq, from_dt, to_dt)
+    data = [_lower_keys(row) for row in data]
 
     if sensors:
         error = _check_sensors_present(data, sensors)
