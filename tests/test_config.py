@@ -1,6 +1,7 @@
 """Tests for config loading."""
 
 import json
+
 import pytest
 
 from mcp_airq.config import DeviceConfig, load_config
@@ -15,9 +16,7 @@ def clean_env(monkeypatch):
 
 def test_load_from_env_single_device(monkeypatch):
     """Load a single device from AIRQ_DEVICES."""
-    devices_json = json.dumps(
-        [{"address": "192.168.1.1", "password": "secret", "name": "MyAirQ"}]
-    )
+    devices_json = json.dumps([{"address": "192.168.1.1", "password": "secret", "name": "MyAirQ"}])
     monkeypatch.setenv("AIRQ_DEVICES", devices_json)
     configs = load_config()
     assert len(configs) == 1
@@ -55,9 +54,7 @@ def test_location_is_optional(monkeypatch):
 
 def test_location_is_loaded(monkeypatch):
     """Location is parsed from config."""
-    devices_json = json.dumps(
-        [{"address": "10.0.0.1", "password": "pw", "location": "Wohnzimmer"}]
-    )
+    devices_json = json.dumps([{"address": "10.0.0.1", "password": "pw", "location": "Wohnzimmer"}])
     monkeypatch.setenv("AIRQ_DEVICES", devices_json)
     configs = load_config()
     assert configs[0].location == "Wohnzimmer"
@@ -73,9 +70,7 @@ def test_group_is_optional(monkeypatch):
 
 def test_group_is_loaded(monkeypatch):
     """Group is parsed from config."""
-    devices_json = json.dumps(
-        [{"address": "10.0.0.1", "password": "pw", "group": "zu Hause"}]
-    )
+    devices_json = json.dumps([{"address": "10.0.0.1", "password": "pw", "group": "zu Hause"}])
     monkeypatch.setenv("AIRQ_DEVICES", devices_json)
     configs = load_config()
     assert configs[0].group == "zu Hause"
@@ -84,9 +79,7 @@ def test_group_is_loaded(monkeypatch):
 def test_load_from_file(monkeypatch, tmp_path):
     """Load from AIRQ_CONFIG_FILE."""
     config_file = tmp_path / "devices.json"
-    config_file.write_text(
-        json.dumps([{"address": "1.2.3.4", "password": "x", "name": "File"}])
-    )
+    config_file.write_text(json.dumps([{"address": "1.2.3.4", "password": "x", "name": "File"}]))
     monkeypatch.setenv("AIRQ_CONFIG_FILE", str(config_file))
     configs = load_config()
     assert configs[0].name == "File"

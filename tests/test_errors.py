@@ -1,9 +1,9 @@
 """Tests for the @handle_airq_errors decorator."""
 
-import pytest
 import aiohttp
-from aioairq.exceptions import InvalidAirQResponse, InvalidAuth
+import pytest
 from aioairq.core import APIAccessDenied
+from aioairq.exceptions import InvalidAirQResponse, InvalidAuth
 
 from mcp_airq.errors import handle_airq_errors
 

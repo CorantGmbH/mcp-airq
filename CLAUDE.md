@@ -38,27 +38,25 @@ Claude Desktop/Code/Web
 ## Commands
 
 ```bash
-# Install (editable, with dev deps)
-pip install -e ".[dev]"
+# Create/update the project environment
+uv sync --frozen --extra dev
 
 # Run tests
-pytest
+uv run pytest
+
+# Install and run commit hooks
+uv run pre-commit install
+uv run pre-commit run --all-files
 
 # Run the server (STDIO transport)
-mcp-airq
+uv run mcp-airq
 
 # Build for distribution
-pip install hatch
-hatch build
+uvx hatch build
 ```
 
-> **Note:** The pre-commit hooks (`pytest`, `pylint`, `pyright`) use `language: system` and rely on PATH.
-> The project is installed in micromamba (`/home/daniel/micromamba`). When committing, ensure
-> micromamba/bin is first on PATH:
->
-> ```bash
-> PATH="/home/daniel/micromamba/bin:$PATH" git commit -m "..."
-> ```
+> **Note:** The repo uses a project-local `.venv` managed by `uv`. Avoid machine-specific
+> Python paths or globally installed lint/test tools when working on this project.
 
 ## Device Configuration
 
@@ -91,7 +89,7 @@ Or via `AIRQ_CONFIG_FILE` pointing to a JSON file with the same structure.
 - **DRY**: Before completing a task, review changes for repeated patterns. Extract shared
   helpers into `tools/_helpers.py` (tool code) or `tests/conftest.py` (test fixtures).
 - **Review before committing**: Run `git diff --staged` to verify changes are clean,
-  consistent, and don't introduce duplication. Run `pylint` and `pyright` on changed files
+  consistent, and don't introduce duplication. Run `ruff check`, `pyright`, and the relevant tests
   before committing to catch issues early.
 - **Consistent serialization**: Use `_json()` from `tools/_helpers.py` for JSON responses.
   Use `json.dumps()` directly only for compact inline formatting (e.g. in f-strings).

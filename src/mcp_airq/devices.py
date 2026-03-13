@@ -9,9 +9,7 @@ from mcp_airq.config import DeviceConfig
 class DeviceManager:
     """Holds the shared aiohttp session and creates AirQ instances on demand."""
 
-    def __init__(
-        self, session: aiohttp.ClientSession, configs: list[DeviceConfig]
-    ) -> None:
+    def __init__(self, session: aiohttp.ClientSession, configs: list[DeviceConfig]) -> None:
         self._session = session
         self._configs = {cfg.name: cfg for cfg in configs}
         self._instances: dict[str, AirQ] = {}
@@ -44,13 +42,8 @@ class DeviceManager:
         if not matches:
             available = self._unique_values(field)
             if available:
-                raise ValueError(
-                    f"No devices with {field}='{value}'. "
-                    f"Available: {', '.join(available)}"
-                )
-            raise ValueError(
-                f"No {field}s configured. Add '{field}' to your device config."
-            )
+                raise ValueError(f"No devices with {field}='{value}'. Available: {', '.join(available)}")
+            raise ValueError(f"No {field}s configured. Add '{field}' to your device config.")
         return [(name, self._get_or_create(name)) for name in matches]
 
     @property
@@ -74,10 +67,7 @@ class DeviceManager:
             if len(self._configs) == 1:
                 device = next(iter(self._configs))
             else:
-                raise ValueError(
-                    f"Multiple devices configured. Specify one of: "
-                    f"{', '.join(self._configs.keys())}"
-                )
+                raise ValueError(f"Multiple devices configured. Specify one of: {', '.join(self._configs.keys())}")
 
         # Exact match first
         if device in self._configs:
@@ -89,10 +79,7 @@ class DeviceManager:
         if len(matches) == 1:
             return self._get_or_create(matches[0])
         if len(matches) == 0:
-            raise ValueError(
-                f"No device matching '{device}'. "
-                f"Available: {', '.join(self._configs.keys())}"
-            )
+            raise ValueError(f"No device matching '{device}'. Available: {', '.join(self._configs.keys())}")
         raise ValueError(f"Ambiguous device '{device}'. Matches: {', '.join(matches)}")
 
     def resolve_location(self, location: str) -> list[tuple[str, AirQ]]:

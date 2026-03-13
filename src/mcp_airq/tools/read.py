@@ -113,9 +113,7 @@ def _lower_keys(data: dict) -> dict:
 _FILE_BUFFER_S = 300  # seconds of slack when pre-filtering file names
 
 
-async def _collect_historical_data(  # pylint: disable=too-many-locals
-    airq: AirQ, from_dt: datetime, to_dt: datetime
-) -> list[dict]:
+async def _collect_historical_data(airq: AirQ, from_dt: datetime, to_dt: datetime) -> list[dict]:
     """Download historical data files from the device and filter to the requested time range."""
     from_ms = int(from_dt.timestamp() * 1000)
     to_ms = int(to_dt.timestamp() * 1000)
@@ -137,9 +135,7 @@ async def _collect_historical_data(  # pylint: disable=too-many-locals
                 continue
             raise
         except aiohttp.ClientError:
-            logger.debug(
-                "Could not list historical files for %s", day_path, exc_info=True
-            )
+            logger.debug("Could not list historical files for %s", day_path, exc_info=True)
             current_date += timedelta(days=1)
             continue
 
@@ -327,7 +323,7 @@ async def get_brightness_config(ctx: Context, device: str | None = None) -> str:
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
-async def get_air_quality_history(  # pylint: disable=too-many-arguments, too-many-locals
+async def get_air_quality_history(
     ctx: Context,
     device: str | None = None,
     last_hours: float | None = None,
@@ -382,9 +378,7 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments, too-ma
     """
     _, airq = _resolve(ctx, device)
 
-    time_range = _parse_time_range(
-        datetime.now(timezone.utc), last_hours, from_datetime, to_datetime
-    )
+    time_range = _parse_time_range(datetime.now(timezone.utc), last_hours, from_datetime, to_datetime)
     if isinstance(time_range, str):
         return time_range
     from_dt, to_dt = time_range

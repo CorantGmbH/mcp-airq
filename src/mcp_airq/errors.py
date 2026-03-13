@@ -5,10 +5,10 @@ import logging
 from collections.abc import Callable
 
 import aiohttp
-from aioairq.exceptions import InvalidAirQResponse, InvalidAuth
 
 # APIAccessDenied is not re-exported from aioairq top-level
 from aioairq.core import APIAccessDenied
+from aioairq.exceptions import InvalidAirQResponse, InvalidAuth
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,6 @@ def handle_airq_errors(fn: Callable) -> Callable:
             return f"Network error: {type(exc).__name__}: {exc}"
         except TimeoutError:
             logger.warning("Timeout in %s", fn.__name__)
-            return (
-                "Request timed out. Check that the device is on the same "
-                "network and powered on."
-            )
+            return "Request timed out. Check that the device is on the same network and powered on."
 
     return wrapper

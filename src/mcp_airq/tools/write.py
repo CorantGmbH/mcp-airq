@@ -100,11 +100,7 @@ async def set_brightness(
     return result
 
 
-@mcp.tool(
-    annotations=ToolAnnotations(
-        readOnlyHint=False, destructiveHint=True, idempotentHint=True
-    )
-)
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=True))
 @handle_airq_errors
 async def configure_network(
     ctx: Context,
@@ -125,8 +121,6 @@ async def configure_network(
         return "Network set to DHCP. Restart the device to apply."
     if not all([ip, subnet, gateway, dns]):
         return "For static IP, provide all of: ip, subnet, gateway, dns."
-    assert (
-        ip and subnet and gateway and dns
-    )  # narrowed from str | None after guard above
+    assert ip and subnet and gateway and dns  # narrowed from str | None after guard above
     await airq.set_ifconfig_static(ip, subnet, gateway, dns)
     return f"Static IP configured: {ip}/{subnet}, gateway={gateway}, dns={dns}. Restart to apply."

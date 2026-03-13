@@ -1,6 +1,5 @@
 """Tests for read-only tools."""
 
-# pylint: disable=redefined-outer-name
 import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -90,9 +89,7 @@ async def test_list_devices_with_location(mock_session):
 @pytest.mark.asyncio
 async def test_get_air_quality(mock_ctx, mock_airq):
     """get_air_quality returns sensor data."""
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_air_quality(mock_ctx)
         data = json.loads(result)
         assert data["temperature"] == 22.5
@@ -107,9 +104,7 @@ async def test_get_air_quality(mock_ctx, mock_airq):
 @pytest.mark.asyncio
 async def test_get_air_quality_with_options(mock_ctx, mock_airq):
     """get_air_quality passes options through."""
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         await get_air_quality(
             mock_ctx,
             return_average=False,
@@ -199,9 +194,7 @@ async def test_get_air_quality_by_group(mock_session):
 @pytest.mark.asyncio
 async def test_get_device_info(mock_ctx, mock_airq):
     """get_device_info returns device metadata."""
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_device_info(mock_ctx)
         data = json.loads(result)
         assert data["model"] == "air-Q Pro"
@@ -211,9 +204,7 @@ async def test_get_device_info(mock_ctx, mock_airq):
 @pytest.mark.asyncio
 async def test_get_config(mock_ctx, mock_airq):
     """get_config returns device configuration."""
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_config(mock_ctx)
         data = json.loads(result)
         assert data["devicename"] == "Test"
@@ -222,9 +213,7 @@ async def test_get_config(mock_ctx, mock_airq):
 @pytest.mark.asyncio
 async def test_get_logs(mock_ctx, mock_airq):
     """get_logs returns log entries."""
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_logs(mock_ctx)
         data = json.loads(result)
         assert len(data) == 2
@@ -233,9 +222,7 @@ async def test_get_logs(mock_ctx, mock_airq):
 @pytest.mark.asyncio
 async def test_identify_device(mock_ctx, mock_airq):
     """identify_device triggers blink and returns device ID."""
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await identify_device(mock_ctx)
         assert "abc123def456" in result
         assert "blinking" in result.lower()
@@ -253,9 +240,7 @@ async def test_list_devices_with_group(mock_ctx_with_group):
 async def test_get_led_theme(mock_ctx, mock_airq):
     """get_led_theme returns the current LED theme."""
     mock_airq.get_led_theme.return_value = {"left": "air", "right": "air"}
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_led_theme(mock_ctx)
         data = json.loads(result)
         assert data["left"] == "air"
@@ -265,9 +250,7 @@ async def test_get_led_theme(mock_ctx, mock_airq):
 async def test_get_possible_led_themes(mock_ctx, mock_airq):
     """get_possible_led_themes returns available theme names."""
     mock_airq.get_possible_led_themes.return_value = ["air", "health", "pollen"]
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_possible_led_themes(mock_ctx)
         data = json.loads(result)
         assert "air" in data
@@ -281,9 +264,7 @@ async def test_get_night_mode(mock_ctx, mock_airq):
         "start": "22:00",
         "end": "07:00",
     }
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_night_mode(mock_ctx)
         data = json.loads(result)
         assert data["activated"] is True
@@ -293,9 +274,7 @@ async def test_get_night_mode(mock_ctx, mock_airq):
 async def test_get_brightness_config(mock_ctx, mock_airq):
     """get_brightness_config returns day and night brightness values."""
     mock_airq.get_brightness_config.return_value = {"day": 80, "night": 20}
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=mock_airq):
         result = await get_brightness_config(mock_ctx)
         data = json.loads(result)
         assert data["day"] == 80
@@ -331,9 +310,8 @@ def test_parse_time_range_negative_hours():
 
 def test_parse_time_range_from_to():
     """Accepts both from_datetime and to_datetime."""
-    result = _parse_time_range(
-        NOW, None, "2026-03-12T10:00:00+00:00", "2026-03-12T11:00:00+00:00"
-    )
+    result = _parse_time_range(NOW, None, "2026-03-12T10:00:00+00:00", "2026-03-12T11:00:00+00:00")
+    assert not isinstance(result, str)
     from_dt, to_dt = result
     assert from_dt.hour == 10
     assert to_dt.hour == 11
@@ -341,25 +319,25 @@ def test_parse_time_range_from_to():
 
 def test_parse_time_range_from_only():
     """Defaults to_datetime to now when only from_datetime is given."""
-    from_dt, to_dt = _parse_time_range(NOW, None, "2026-03-12T10:00:00+00:00", None)
+    result = _parse_time_range(NOW, None, "2026-03-12T10:00:00+00:00", None)
+    assert not isinstance(result, str)
+    from_dt, to_dt = result
     assert from_dt.hour == 10
     assert to_dt == NOW
 
 
 def test_parse_time_range_naive_datetime():
     """Naive datetimes get UTC timezone attached."""
-    from_dt, to_dt = _parse_time_range(
-        NOW, None, "2026-03-12T10:00:00", "2026-03-12T11:00:00"
-    )
+    result = _parse_time_range(NOW, None, "2026-03-12T10:00:00", "2026-03-12T11:00:00")
+    assert not isinstance(result, str)
+    from_dt, to_dt = result
     assert from_dt.tzinfo == timezone.utc
     assert to_dt.tzinfo == timezone.utc
 
 
 def test_parse_time_range_from_after_to():
     """Rejects from_datetime >= to_datetime."""
-    result = _parse_time_range(
-        NOW, None, "2026-03-12T12:00:00+00:00", "2026-03-12T11:00:00+00:00"
-    )
+    result = _parse_time_range(NOW, None, "2026-03-12T12:00:00+00:00", "2026-03-12T11:00:00+00:00")
     assert isinstance(result, str)
     assert "before" in result
 
@@ -445,9 +423,7 @@ async def test_collect_historical_data_multi_day():
     ts_day2 = int(datetime(2026, 3, 12, 0, 30, 0, tzinfo=timezone.utc).timestamp())
 
     airq = AsyncMock()
-    airq.get_historical_files_list = AsyncMock(
-        side_effect=[[str(ts_day1)], [str(ts_day2)]]
-    )
+    airq.get_historical_files_list = AsyncMock(side_effect=[[str(ts_day1)], [str(ts_day2)]])
     airq.get_historical_file = AsyncMock(
         side_effect=[
             [{"timestamp": ts_day1 * 1000, "co2": 400}],
@@ -472,9 +448,7 @@ async def test_collect_historical_data_skips_missing_day():
     mock_resp.headers = {}
 
     airq = AsyncMock()
-    airq.get_historical_files_list = AsyncMock(
-        side_effect=aiohttp.ClientResponseError(mock_resp, (), status=404)
-    )
+    airq.get_historical_files_list = AsyncMock(side_effect=aiohttp.ClientResponseError(mock_resp, (), status=404))
 
     result = await _collect_historical_data(airq, from_dt, to_dt)
     assert result == []
@@ -510,9 +484,7 @@ async def test_collect_historical_data_sorts_by_timestamp():
     ts3 = (_TS_BASE + 120) * 1000
 
     airq = AsyncMock()
-    airq.get_historical_files_list = AsyncMock(
-        return_value=[str(_TS_BASE + 120), str(_TS_BASE)]
-    )
+    airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE + 120), str(_TS_BASE)])
     airq.get_historical_file = AsyncMock(
         side_effect=[
             [{"timestamp": ts3, "v": 3}],
@@ -560,9 +532,7 @@ def mock_airq_with_history():
 
 
 @pytest.mark.asyncio
-async def test_get_air_quality_history_default_last_hour(
-    mock_ctx, mock_airq_with_history
-):
+async def test_get_air_quality_history_default_last_hour(mock_ctx, mock_airq_with_history):
     """Defaults to last 1 hour, compact mode."""
     with patch.object(
         mock_ctx.request_context.lifespan_context,
@@ -616,9 +586,7 @@ async def test_get_air_quality_history_from_only(mock_ctx, mock_airq_with_histor
         "resolve",
         return_value=mock_airq_with_history,
     ):
-        result = await get_air_quality_history(
-            mock_ctx, from_datetime="2026-03-12T09:00:00+00:00"
-        )
+        result = await get_air_quality_history(mock_ctx, from_datetime="2026-03-12T09:00:00+00:00")
         data = json.loads(result)
         assert "columns" in data
 
@@ -642,9 +610,7 @@ async def test_get_air_quality_history_from_after_to(mock_ctx):
 
 
 @pytest.mark.asyncio
-async def test_get_air_quality_history_includes_sensor_guide(
-    mock_ctx, mock_airq_with_history
-):
+async def test_get_air_quality_history_includes_sensor_guide(mock_ctx, mock_airq_with_history):
     """Response always includes _sensor_guide."""
     with patch.object(
         mock_ctx.request_context.lifespan_context,
@@ -684,17 +650,12 @@ async def test_get_air_quality_history_sensors_filter(mock_ctx, mock_airq_with_h
 @pytest.mark.asyncio
 async def test_get_air_quality_history_max_points(mock_ctx):
     """Downsamples to max_points."""
-    measurements = [
-        {"timestamp": (_TS_BASE + i * 120) * 1000, "temperature": 20.0 + i * 0.1}
-        for i in range(100)
-    ]
+    measurements = [{"timestamp": (_TS_BASE + i * 120) * 1000, "temperature": 20.0 + i * 0.1} for i in range(100)]
     airq = AsyncMock()
     airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE)])
     airq.get_historical_file = AsyncMock(return_value=measurements)
 
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=airq):
         result = await get_air_quality_history(
             mock_ctx,
             from_datetime="2026-03-12T09:55:00+00:00",
@@ -721,9 +682,7 @@ async def test_get_air_quality_history_sensors_and_max_points(mock_ctx):
     airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE)])
     airq.get_historical_file = AsyncMock(return_value=measurements)
 
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=airq):
         result = await get_air_quality_history(
             mock_ctx,
             from_datetime="2026-03-12T09:55:00+00:00",
@@ -746,9 +705,7 @@ async def test_get_air_quality_history_empty_data(mock_ctx):
     airq.get_historical_files_list = AsyncMock(return_value=[])
     airq.get_historical_file = AsyncMock(return_value=[])
 
-    with patch.object(
-        mock_ctx.request_context.lifespan_context, "resolve", return_value=airq
-    ):
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=airq):
         result = await get_air_quality_history(
             mock_ctx,
             from_datetime="2026-03-12T09:55:00+00:00",
@@ -761,9 +718,7 @@ async def test_get_air_quality_history_empty_data(mock_ctx):
 
 
 @pytest.mark.asyncio
-async def test_get_air_quality_history_columnar_format(
-    mock_ctx, mock_airq_with_history
-):
+async def test_get_air_quality_history_columnar_format(mock_ctx, mock_airq_with_history):
     """Returns column-oriented data with sensor guide."""
     with patch.object(
         mock_ctx.request_context.lifespan_context,

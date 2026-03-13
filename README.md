@@ -176,8 +176,19 @@ Exactly one of `device`, `location`, or `group` may be specified per call.
 ```bash
 git clone https://github.com/CorantGmbH/mcp-airq.git
 cd mcp-airq
-pip install -e ".[dev]"
-pytest
+uv sync --frozen --extra dev
+uv run pre-commit install
+uv run pytest
+```
+
+The repository uses a project-local `.venv` plus `uv.lock` for reproducible tooling.
+Run all developer commands through `uv run`, for example:
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run pre-commit run --all-files
 ```
 
 ## Release Process

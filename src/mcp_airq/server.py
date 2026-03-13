@@ -1,8 +1,8 @@
 """MCP server for air-Q air quality sensor devices."""
 
 import argparse
-import sys
 import logging
+import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -42,11 +42,9 @@ mcp = FastMCP(
     lifespan=app_lifespan,
 )
 
-# Import tools and prompts to register them with the mcp instance
-# pylint: disable=wrong-import-position, unused-import, cyclic-import
-from mcp_airq.tools import dangerous, read, write  # noqa: E402, F401
+# Import tools and prompts to register them with the mcp instance.
 from mcp_airq import prompts  # noqa: E402, F401
-
+from mcp_airq.tools import dangerous, read, write  # noqa: E402, F401
 
 _HELP_TEXT = """\
 This command is designed to be launched by an MCP client (e.g. Claude Desktop,
@@ -89,9 +87,7 @@ def main():
         add_help=False,
     )
     parser.add_argument("--version", action="store_true", help="Show version and exit")
-    parser.add_argument(
-        "--help", "-h", action="store_true", help="Show this help and exit"
-    )
+    parser.add_argument("--help", "-h", action="store_true", help="Show this help and exit")
 
     args, _ = parser.parse_known_args()
 
@@ -100,9 +96,7 @@ def main():
         return
 
     if args.help or sys.stdin.isatty():
-        print(
-            f"mcp-airq {__version__} — MCP server for air-Q air quality sensor devices\n"
-        )
+        print(f"mcp-airq {__version__} — MCP server for air-Q air quality sensor devices\n")
         print(_HELP_TEXT, end="")
         return
 

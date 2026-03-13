@@ -7,9 +7,7 @@ from mcp_airq.errors import handle_airq_errors
 from mcp_airq.server import mcp
 from mcp_airq.tools._helpers import _resolve
 
-DESTRUCTIVE = ToolAnnotations(
-    readOnlyHint=False, destructiveHint=True, idempotentHint=False
-)
+DESTRUCTIVE = ToolAnnotations(readOnlyHint=False, destructiveHint=True, idempotentHint=False)
 
 
 @mcp.tool(annotations=DESTRUCTIVE)

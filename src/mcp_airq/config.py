@@ -70,9 +70,7 @@ def load_config() -> list[DeviceConfig]:
     devices = []
     for i, entry in enumerate(entries):
         if "address" not in entry or "password" not in entry:
-            raise ValueError(
-                f"Device entry {i} missing required 'address' or 'password' field."
-            )
+            raise ValueError(f"Device entry {i} missing required 'address' or 'password' field.")
         devices.append(
             DeviceConfig(
                 address=entry["address"],
