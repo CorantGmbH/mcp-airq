@@ -1,5 +1,6 @@
 """Read-only tools for querying air-Q devices."""
 
+import json
 import logging
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
@@ -57,6 +58,25 @@ def _filter_sensors(data: list[dict], sensors: list[str]) -> list[dict]:
     return [{k: v for k, v in entry.items() if k.lower() in keep} for entry in data]
 
 
+def _check_sensors_present(
+    data: list[dict],
+    sensors: list[str],
+) -> str | None:
+    """Return an error string if any requested sensors are missing from the data."""
+    if not data or not sensors:
+        return None
+    meta = {"datetime", "timestamp", "deviceid"}
+    present = set().union(*(e.keys() for e in data)) - meta
+    missing = {s.lower() for s in sensors} - {k.lower() for k in present}
+    if missing:
+        available = sorted(k for k in present if k.lower() not in meta)
+        msg = f"Sensor(s) not available on this device: {', '.join(sorted(missing))}."
+        if available:
+            msg += f" Available: {', '.join(available)}."
+        return msg
+    return None
+
+
 def _downsample(data: list[dict], max_points: int) -> list[dict]:
     """Evenly downsample a list to at most max_points entries."""
     n = len(data)
@@ -64,6 +84,25 @@ def _downsample(data: list[dict], max_points: int) -> list[dict]:
         return data
     step = n / max_points
     return [data[int(i * step)] for i in range(max_points)]
+
+
+def _to_columnar(data: list[dict]) -> dict[str, list]:
+    """Convert row-oriented data to column-oriented format.
+
+    Drops ``deviceid`` and ``datetime`` (redundant with ``timestamp``).
+    Timestamps are returned in seconds (divided by 1000).
+    """
+    if not data:
+        return {}
+    skip = {"deviceid", "datetime"}
+    keys = [k for k in data[0] if k not in skip]
+    cols: dict[str, list] = {}
+    for k in keys:
+        if k == "timestamp":
+            cols[k] = [row.get(k, 0) // 1000 for row in data]
+        else:
+            cols[k] = [row.get(k) for row in data]
+    return cols
 
 
 _FILE_BUFFER_S = 300  # seconds of slack when pre-filtering file names
@@ -281,7 +320,7 @@ async def get_brightness_config(ctx: Context, device: str | None = None) -> str:
 
 @mcp.tool(annotations=READ_ONLY)
 @handle_airq_errors
-async def get_air_quality_history(  # pylint: disable=too-many-arguments
+async def get_air_quality_history(  # pylint: disable=too-many-arguments, too-many-locals
     ctx: Context,
     device: str | None = None,
     last_hours: float | None = None,
@@ -291,6 +330,10 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments
     max_points: int | None = None,
 ) -> str:
     """Get historical air quality data stored on the device's SD card.
+
+    IMPORTANT — 'sensors' must be a JSON array, not a plain string.
+      Correct:   sensors=["pm1","pm2_5"]
+      Wrong:     sensors="pm1"
 
     IMPORTANT — response size: air-Q records every ~2 minutes, so long ranges
     produce large responses (24 h ≈ 720 readings × ~25 sensors). Always use
@@ -306,8 +349,8 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments
       'to_datetime' defaults to now.
 
     Optional filtering:
-    - 'sensors' — sensor names to include (e.g. ["pm1", "pm2_5", "pm10"]).
-      datetime and timestamp are always kept. Omit to get all sensors.
+    - 'sensors' — list of sensor names to include (e.g. ["pm1", "pm2_5", "pm10"]).
+      Omit to get all sensors.
       Valid sensor names (device-dependent):
         Climate:    temperature, humidity, humidity_abs, dewpt,
                     pressure, pressure_rel
@@ -326,6 +369,9 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments
         Indices:    health, performance, mold, virus
         Other:      flow1, flow2, flow3, flow4, wifi
     - 'max_points' — downsample to at most this many evenly spaced points.
+
+    Response: column-oriented JSON. Timestamps are Unix seconds (integer).
+    Includes _sensor_guide with unit and interpretation documentation.
     """
     _, airq = _resolve(ctx, device)
 
@@ -339,21 +385,22 @@ async def get_air_quality_history(  # pylint: disable=too-many-arguments
     data = await _collect_historical_data(airq, from_dt, to_dt)
 
     if sensors:
+        error = _check_sensors_present(data, sensors)
+        if error:
+            return error
         data = _filter_sensors(data, sensors)
 
     if max_points is not None and max_points > 0:
         data = _downsample(data, max_points)
 
+    all_keys = set().union(*(entry.keys() for entry in data)) if data else set()
     result: dict[str, object] = {
         "from": from_dt.isoformat(),
         "to": to_dt.isoformat(),
         "count": len(data),
-        "data": data,
+        "columns": _to_columnar(data),
     }
-
-    all_keys = set().union(*(entry.keys() for entry in data)) if data else set()
     guide = build_sensor_guide(all_keys)
     if guide:
         result["_sensor_guide"] = guide
-
-    return _json(result)
+    return json.dumps(result, separators=(",", ":"), default=str)

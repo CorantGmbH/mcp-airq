@@ -563,7 +563,7 @@ def mock_airq_with_history():
 async def test_get_air_quality_history_default_last_hour(
     mock_ctx, mock_airq_with_history
 ):
-    """Defaults to last 1 hour."""
+    """Defaults to last 1 hour, compact mode."""
     with patch.object(
         mock_ctx.request_context.lifespan_context,
         "resolve",
@@ -572,7 +572,7 @@ async def test_get_air_quality_history_default_last_hour(
         result = await get_air_quality_history(mock_ctx)
         data = json.loads(result)
         assert "count" in data
-        assert "data" in data
+        assert "columns" in data
         assert "from" in data
         assert "to" in data
 
@@ -587,7 +587,7 @@ async def test_get_air_quality_history_custom_hours(mock_ctx, mock_airq_with_his
     ):
         result = await get_air_quality_history(mock_ctx, last_hours=6.0)
         data = json.loads(result)
-        assert "data" in data
+        assert "columns" in data
 
 
 @pytest.mark.asyncio
@@ -620,7 +620,7 @@ async def test_get_air_quality_history_from_only(mock_ctx, mock_airq_with_histor
             mock_ctx, from_datetime="2026-03-12T09:00:00+00:00"
         )
         data = json.loads(result)
-        assert "data" in data
+        assert "columns" in data
 
 
 @pytest.mark.asyncio
@@ -645,7 +645,7 @@ async def test_get_air_quality_history_from_after_to(mock_ctx):
 async def test_get_air_quality_history_includes_sensor_guide(
     mock_ctx, mock_airq_with_history
 ):
-    """Response includes _sensor_guide when data is present."""
+    """Response always includes _sensor_guide."""
     with patch.object(
         mock_ctx.request_context.lifespan_context,
         "resolve",
@@ -675,10 +675,10 @@ async def test_get_air_quality_history_sensors_filter(mock_ctx, mock_airq_with_h
             sensors=["co2"],
         )
         data = json.loads(result)
-        for entry in data["data"]:
-            assert "co2" in entry
-            assert "timestamp" in entry
-            assert "temperature" not in entry
+        cols = data["columns"]
+        assert "co2" in cols
+        assert "timestamp" in cols
+        assert "temperature" not in cols
 
 
 @pytest.mark.asyncio
@@ -703,7 +703,7 @@ async def test_get_air_quality_history_max_points(mock_ctx):
         )
         data = json.loads(result)
         assert data["count"] == 10
-        assert len(data["data"]) == 10
+        assert len(data["columns"]["temperature"]) == 10
 
 
 @pytest.mark.asyncio
@@ -733,10 +733,10 @@ async def test_get_air_quality_history_sensors_and_max_points(mock_ctx):
         )
         data = json.loads(result)
         assert data["count"] == 5
-        for entry in data["data"]:
-            assert "pm10" in entry
-            assert "timestamp" in entry
-            assert "temperature" not in entry
+        cols = data["columns"]
+        assert "pm10" in cols
+        assert "timestamp" in cols
+        assert "temperature" not in cols
 
 
 @pytest.mark.asyncio
@@ -756,5 +756,75 @@ async def test_get_air_quality_history_empty_data(mock_ctx):
         )
         data = json.loads(result)
         assert data["count"] == 0
-        assert data["data"] == []
+        assert data["columns"] == {}
         assert "_sensor_guide" not in data
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_columnar_format(
+    mock_ctx, mock_airq_with_history
+):
+    """Returns column-oriented data with sensor guide."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+        )
+        data = json.loads(result)
+        assert "columns" in data
+        assert "data" not in data
+        assert "_sensor_guide" in data
+        cols = data["columns"]
+        assert "timestamp" in cols
+        assert "temperature" in cols
+        assert "co2" in cols
+        assert "deviceid" not in cols
+        assert "datetime" not in cols
+        assert len(cols["timestamp"]) == data["count"]
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_sensor_filter_columnar(
+    mock_ctx,
+    mock_airq_with_history,
+):
+    """Sensor filter returns only requested columns."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            sensors=["co2"],
+        )
+        data = json.loads(result)
+        cols = data["columns"]
+        assert "timestamp" in cols
+        assert "co2" in cols
+        assert "temperature" not in cols
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_missing_sensor(mock_ctx, mock_airq_with_history):
+    """Returns error when requested sensor is not available on device."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            sensors=["radon"],
+        )
+        assert "not available" in result
+        assert "radon" in result

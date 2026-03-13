@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.1] - 2026-03-13
+
+### Changed
+
+- `get_air_quality_history` now always returns column-oriented JSON (no `compact`
+  parameter). Response always includes `_sensor_guide`. Timestamps are returned
+  as Unix seconds (divided by 1000) instead of milliseconds, saving tokens for
+  long time ranges.
+- Improved `get_air_quality_history` docstring: `sensors` parameter is now
+  clearly documented as a JSON array — not a string — with correct/incorrect
+  usage examples to prevent mis-use by LLMs.
+
 ## [1.2.0] - 2026-03-12
 
 ### Added
