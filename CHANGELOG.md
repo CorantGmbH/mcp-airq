@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.5.0] - 2026-03-14
+
+### Added
+
+- The existing `mcp-airq` executable now also works as a direct CLI: every MCP
+  tool is available as a terminal subcommand, using either hyphenated command
+  names (for example `list-devices`) or the original MCP tool names
+  (`list_devices`).
+- Added an explicit `mcp-airq serve` command to force stdio MCP server mode
+  from an interactive terminal.
+
+### Changed
+
+- CLI output is now shell-pipeline friendly: successful data stays on `stdout`,
+  runtime errors go to `stderr`, and command failures return exit code `1`.
+- Added `--compact-json`, `--json`, and `--yaml` output modes for direct CLI
+  usage, making it easy to chain `mcp-airq` with tools like `jq` or `yq`.
+
 ## [1.3.1] - 2026-03-13
 
 ### Changed

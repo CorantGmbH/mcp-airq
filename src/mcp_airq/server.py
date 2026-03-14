@@ -1,6 +1,5 @@
 """MCP server for air-Q air quality sensor devices."""
 
-import argparse
 import logging
 import sys
 from collections.abc import AsyncIterator
@@ -47,9 +46,19 @@ from mcp_airq import prompts  # noqa: E402, F401
 from mcp_airq.tools import dangerous, read, write  # noqa: E402, F401
 
 _HELP_TEXT = """\
-This command is designed to be launched by an MCP client (e.g. Claude Desktop,
-Claude Code, or OpenAI Codex), not run interactively from the terminal.
-It communicates via JSON-RPC 2.0 over standard input/output (stdio transport).
+This command supports two modes:
+
+1. MCP server mode for Claude Desktop, Claude Code, OpenAI Codex, and other clients.
+2. Direct CLI mode, where each MCP tool is exposed as a terminal subcommand.
+
+CLI examples:
+
+  mcp-airq list-devices
+  mcp-airq get-air-quality --device "Living Room"
+  mcp-airq set-night-mode --activated --device "Bedroom"
+
+When started without subcommands, it runs as an MCP server over standard
+input/output (stdio transport).
 
 Set the AIRQ_DEVICES environment variable to a JSON array of device objects:
 
@@ -79,23 +88,35 @@ For more information, see: https://github.com/CorantGmbH/mcp-airq
 """
 
 
+def run_cli(argv: list[str] | None = None) -> int:
+    """Run the direct CLI mode."""
+    from mcp_airq.cli import main as cli_main
+
+    return cli_main(argv)
+
+
 def main():
     """Entry point for the mcp-airq command."""
-    parser = argparse.ArgumentParser(
-        prog="mcp-airq",
-        description="MCP server for air-Q air quality sensor devices",
-        add_help=False,
-    )
-    parser.add_argument("--version", action="store_true", help="Show version and exit")
-    parser.add_argument("--help", "-h", action="store_true", help="Show this help and exit")
+    argv = sys.argv[1:]
 
-    args, _ = parser.parse_known_args()
-
-    if args.version:
+    if argv and argv[0] == "--version":
         print(f"mcp-airq {__version__}")
         return
 
-    if args.help or sys.stdin.isatty():
+    if argv and argv[0] in {"--help", "-h"}:
+        print(f"mcp-airq {__version__} — MCP server for air-Q air quality sensor devices\n")
+        print(_HELP_TEXT, end="")
+        return
+
+    if argv and argv[0] in {"serve", "mcp"}:
+        mcp.run(transport="stdio")
+        return
+
+    if argv:
+        run_cli(argv)
+        return
+
+    if sys.stdin.isatty():
         print(f"mcp-airq {__version__} — MCP server for air-Q air quality sensor devices\n")
         print(_HELP_TEXT, end="")
         return

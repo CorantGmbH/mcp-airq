@@ -12,6 +12,9 @@ MCP server for [air-Q](https://www.air-q.com) air quality sensor devices. Enable
 
 Built on [aioairq](https://pypi.org/project/aioairq/), the official async Python library for air-Q.
 
+The same `mcp-airq` executable also works as a direct CLI when you pass a tool
+name as a subcommand.
+
 <!-- mcp-name: io.github.CorantGmbH/mcp-airq -->
 
 ## Installation
@@ -24,6 +27,38 @@ Or run directly with [uvx](https://docs.astral.sh/uv/):
 
 ```bash
 uvx mcp-airq
+```
+
+## CLI Usage
+
+Use the same command directly from the shell:
+
+```bash
+mcp-airq list-devices
+mcp-airq get-air-quality --device "Living Room"
+mcp-airq set-night-mode --activated --device "Bedroom"
+```
+
+The CLI subcommands mirror the MCP tool names. Both styles work:
+
+```bash
+mcp-airq list-devices
+mcp-airq list_devices
+```
+
+To force MCP server mode from an interactive terminal, run:
+
+```bash
+mcp-airq serve
+```
+
+The CLI is pipe-friendly: successful command output goes to `stdout`, while
+tool errors go to `stderr` with exit code `1`.
+
+```bash
+mcp-airq get-air-quality --device "Living Room" | jq '.co2'
+mcp-airq get-air-quality --device "Living Room" --compact-json | jq '.co2'
+mcp-airq get-air-quality --device "Living Room" --yaml | yq '.co2'
 ```
 
 ## Device Configuration
