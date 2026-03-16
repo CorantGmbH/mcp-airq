@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import inspect
 import json
 import re
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Literal, get_args, get_origin
 
 import aiohttp
+from mcp.server.fastmcp.utilities.types import Image
+from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.config import load_config
 from mcp_airq.devices import DeviceManager
@@ -154,6 +158,11 @@ def build_parser() -> argparse.ArgumentParser:
             if name == "ctx":
                 continue
             _add_argument(subparser, name, parameter)
+        if tool_name in {"plot_air_quality_history", "export_air_quality_history"}:
+            subparser.add_argument(
+                "--output",
+                help="Write the resource to this file. Use '-' for stdout.",
+            )
 
     return parser
 
@@ -193,6 +202,8 @@ def _is_error_result(result: Any) -> bool:
 
 def _coerce_structured_data(result: Any) -> Any:
     """Parse JSON strings so they can be re-serialized for CLI output."""
+    if hasattr(result, "model_dump"):
+        return result.model_dump(mode="json")
     if isinstance(result, str):
         try:
             return json.loads(result)
@@ -260,6 +271,66 @@ def _to_yaml(value: Any, indent: int = 0) -> str:
     return f"{prefix}{_yaml_scalar(value)}"
 
 
+def _write_stdout_bytes(data: bytes) -> None:
+    """Write raw bytes to stdout for shell piping."""
+    sys.stdout.buffer.write(data)
+    sys.stdout.buffer.flush()
+
+
+def _write_stdout_text(text: str) -> None:
+    """Write text to stdout without appending a newline."""
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
+
+def _default_plot_output_path(args: argparse.Namespace) -> Path:
+    """Choose a default output file for plot commands."""
+    suffix = ".html" if args.output_format == "html" else ".png"
+    return Path(f"{_command_name(args.tool_name)}{suffix}")
+
+
+def _should_stream_plot_to_stdout(args: argparse.Namespace) -> bool:
+    """Decide whether plot output should be streamed to stdout."""
+    return args.output == "-" or (args.output is None and not sys.stdout.isatty())
+
+
+def _resolve_plot_output_path(args: argparse.Namespace) -> Path:
+    """Resolve the target file path for plot output."""
+    if args.output and args.output != "-":
+        return Path(args.output)
+    return _default_plot_output_path(args)
+
+
+def _should_stream_resource_to_stdout(args: argparse.Namespace) -> bool:
+    """Decide whether a resource should be streamed to stdout."""
+    return args.output == "-" or (args.output is None and not sys.stdout.isatty())
+
+
+def _default_resource_output_path(result: EmbeddedResource, args: argparse.Namespace) -> Path:
+    """Choose a default file path for an embedded resource."""
+    uri = str(result.resource.uri)
+    filename = uri.rsplit("/", 1)[-1] or _command_name(args.tool_name)
+    return Path(filename)
+
+
+def _resolve_resource_output_path(result: EmbeddedResource, args: argparse.Namespace) -> Path:
+    """Resolve the target file path for an embedded resource."""
+    if args.output and args.output != "-":
+        return Path(args.output)
+    return _default_resource_output_path(result, args)
+
+
+def _write_image(image: Image, output_path: Path) -> None:
+    """Write a rendered image to disk."""
+    if image.data is not None:
+        output_path.write_bytes(image.data)
+        return
+    if image.path is not None:
+        output_path.write_bytes(image.path.read_bytes())
+        return
+    raise ValueError("No image payload available.")
+
+
 def _emit_textual_result(args: argparse.Namespace, result: Any) -> None:
     """Emit one non-binary result according to the selected output mode."""
     if args.output_mode == "text" and not args.compact_json:
@@ -281,6 +352,32 @@ def _emit_textual_result(args: argparse.Namespace, result: Any) -> None:
     print(result)
 
 
+def _emit_embedded_resource(args: argparse.Namespace, result: EmbeddedResource) -> None:
+    """Emit one embedded MCP resource as text or bytes."""
+    resource = result.resource
+
+    if isinstance(resource, TextResourceContents):
+        if args.output and args.output != "-":
+            output_path = _resolve_resource_output_path(result, args)
+            output_path.write_text(resource.text, encoding="utf-8")
+            print(output_path)
+            return
+        _write_stdout_text(resource.text)
+        return
+
+    if isinstance(resource, BlobResourceContents):
+        payload = base64.b64decode(resource.blob)
+        if _should_stream_resource_to_stdout(args):
+            _write_stdout_bytes(payload)
+            return
+        output_path = _resolve_resource_output_path(result, args)
+        output_path.write_bytes(payload)
+        print(output_path)
+        return
+
+    raise ValueError(f"Unsupported embedded resource type: {type(resource).__name__}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point for direct terminal usage."""
     parser = build_parser()
@@ -289,6 +386,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     if _is_error_result(result):
         print(result, file=sys.stderr)
         return 1
+    if isinstance(result, Image):
+        if _should_stream_plot_to_stdout(args):
+            if result.data is not None:
+                _write_stdout_bytes(result.data)
+            elif result.path is not None:
+                _write_stdout_bytes(result.path.read_bytes())
+            else:
+                raise ValueError("No image payload available.")
+            return 0
+
+        output_path = _resolve_plot_output_path(args)
+        _write_image(result, output_path)
+        print(output_path)
+        return 0
+
+    if isinstance(result, EmbeddedResource):
+        if args.output_mode != "text" or args.compact_json:
+            _emit_textual_result(args, result)
+            return 0
+        _emit_embedded_resource(args, result)
+        return 0
+
     if result is not None:
         _emit_textual_result(args, result)
     return 0

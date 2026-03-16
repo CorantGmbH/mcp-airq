@@ -7,12 +7,12 @@
     "url": "https://github.com/CorantGmbH/mcp-airq",
     "source": "github"
   },
-  "version": "1.6.2",
+  "version": "1.6.3",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "mcp-airq",
-      "version": "1.6.2",
+      "version": "1.6.3",
       "transport": {
         "type": "stdio"
       },

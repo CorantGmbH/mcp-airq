@@ -1,6 +1,11 @@
 """Tests for the direct CLI wrapper."""
 
+import base64
+from typing import Any, cast
 from unittest.mock import AsyncMock, patch
+
+from mcp.server.fastmcp.utilities.types import Image
+from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.cli import main
 
@@ -98,6 +103,78 @@ def test_main_can_render_yaml(capsys):
 
     assert result == 0
     assert capsys.readouterr().out == 'co2: 800\nlabels:\n  - "home"\n  - "living-room"\n'
+
+
+def test_main_prints_export_csv_resource(capsys):
+    """Text resources are emitted as their payload, not as model reprs."""
+    text = "timestamp,series,metric,unit,value\n2026-03-16T10:00:00+01:00,Living Room,co2,ppm,700.0\n"
+    resource = EmbeddedResource(
+        type="resource",
+        resource=TextResourceContents(
+            uri=cast(Any, "airq://artifacts/history-all-devices-co2.csv"),
+            mimeType="text/csv; charset=utf-8",
+            text=text,
+        ),
+    )
+
+    with patch("mcp_airq.cli._invoke_tool", new_callable=AsyncMock, return_value=resource):
+        result = main(["export-air-quality-history", "--sensor", "co2", "--output-format", "csv"])
+
+    assert result == 0
+    assert capsys.readouterr().out == text
+
+
+def test_main_writes_export_xlsx_resource(tmp_path, capsys):
+    """Binary resources are decoded and written to the requested file."""
+    output = tmp_path / "co2.xlsx"
+    resource = EmbeddedResource(
+        type="resource",
+        resource=BlobResourceContents(
+            uri=cast(Any, "airq://artifacts/history-all-devices-co2.xlsx"),
+            mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            blob=base64.b64encode(b"xlsx-bytes").decode(),
+        ),
+    )
+
+    with patch("mcp_airq.cli._invoke_tool", new_callable=AsyncMock, return_value=resource):
+        result = main(
+            [
+                "export-air-quality-history",
+                "--sensor",
+                "co2",
+                "--output-format",
+                "xlsx",
+                "--output",
+                str(output),
+            ]
+        )
+
+    assert result == 0
+    assert output.read_bytes() == b"xlsx-bytes"
+    assert capsys.readouterr().out == f"{output}\n"
+
+
+def test_main_writes_plot_image(tmp_path, capsys):
+    """PNG plots are written to the requested file path."""
+    output = tmp_path / "co2.png"
+    image = Image(data=b"png-bytes", format="png")
+
+    with patch("mcp_airq.cli._invoke_tool", new_callable=AsyncMock, return_value=image):
+        result = main(
+            [
+                "plot-air-quality-history",
+                "--sensor",
+                "co2",
+                "--device",
+                "Living Room",
+                "--output",
+                str(output),
+            ]
+        )
+
+    assert result == 0
+    assert output.read_bytes() == b"png-bytes"
+    assert capsys.readouterr().out == f"{output}\n"
 
 
 def test_main_returns_non_zero_for_tool_errors(capsys):
