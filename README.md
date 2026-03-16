@@ -37,10 +37,16 @@ Use the same command directly from the shell:
 mcp-airq list-devices
 mcp-airq get-air-quality --device "Living Room"
 mcp-airq get-air-quality-history --device "Living Room" --last-hours 12 --sensors co2
-mcp-airq plot-air-quality-history --sensor co2 --device "Living Room" --output-format svg
-mcp-airq export-air-quality-history --sensor co2 --device "Living Room" --output-format xlsx
+mcp-airq plot-air-quality-history --sensor co2 --output-format png
+mcp-airq export-air-quality-history --sensor co2 --output-format xlsx
 mcp-airq set-night-mode --activated --device "Bedroom"
 ```
+
+For historical plots and exports:
+- omit `device`, `location`, and `group` to combine all configured devices into one artifact
+- use `location` or `group` to combine only the matching devices
+- `plot_air_quality_history` returns one file per requested sensor, with one series per matching device
+- `export_air_quality_history` returns one CSV/XLSX file per request, with rows for all matching devices
 
 The CLI subcommands mirror the MCP tool names. Both styles work:
 
@@ -146,8 +152,8 @@ This writes to `~/.codex/config.toml` and is automatically picked up by the **Co
 | `list_devices`            | List all configured air-Q devices (with location/group if set)       |
 | `get_air_quality`         | Get sensor readings — by `device`, `location`, or `group`            |
 | `get_air_quality_history` | Get historical sensor data as column-oriented JSON                    |
-| `plot_air_quality_history` | Render historical charts as `png`, `webp`, `svg`, or `html`         |
-| `export_air_quality_history` | Export one historical sensor as `csv` or `xlsx`                   |
+| `plot_air_quality_history` | Render one historical chart per sensor across all matching devices |
+| `export_air_quality_history` | Export one historical sensor as one `csv`/`xlsx` across matching devices |
 | `get_device_info`         | Get device metadata (name, model, firmware version)                  |
 | `get_config`              | Get full device configuration                                        |
 | `get_logs`                | Get device log entries                                               |

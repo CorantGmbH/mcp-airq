@@ -1,8 +1,12 @@
 """Shared test fixtures."""
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from mcp_airq.config import DeviceConfig
 from mcp_airq.devices import DeviceManager

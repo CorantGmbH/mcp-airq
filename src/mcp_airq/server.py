@@ -36,7 +36,9 @@ mcp = FastMCP(
         "This server provides access to air-Q air quality sensor devices. "
         "Use list_devices to see available devices. Most tools accept an "
         "optional 'device' parameter to select which device to query — "
-        "if only one device is configured, it is selected automatically."
+        "if only one device is configured, it is selected automatically. "
+        "For historical plots, prefer PNG unless the user explicitly requests "
+        "another output format."
     ),
     lifespan=app_lifespan,
 )
@@ -55,6 +57,7 @@ CLI examples:
 
   mcp-airq list-devices
   mcp-airq get-air-quality --device "Living Room"
+  mcp-airq plot-air-quality-history --sensor co2 --device "Living Room" --output-format png
   mcp-airq set-night-mode --activated --device "Bedroom"
 
 When started without subcommands, it runs as an MCP server over standard

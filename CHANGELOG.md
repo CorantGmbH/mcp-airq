@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.6.1] - 2026-03-16
+
+### Changed
+
+- Historical plot and export tools now combine all matching devices into one
+  request result: one CSV/XLSX export per sensor request and one plot per
+  sensor with a separate series per device.
+- Historical plot guidance now prefers `png` unless the caller explicitly
+  requests another output format.
+
+### Fixed
+
+- Historical exports and plots now preserve sensor units such as `ppm` for CO2
+  when the underlying series metadata omits an explicit unit.
+- `server.json` is now kept in sync with the published package version again.
+
 ## [1.6.0] - 2026-03-16
 
 ### Added

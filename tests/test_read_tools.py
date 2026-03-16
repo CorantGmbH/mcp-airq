@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+from airq_mcp_timeseries.models import PlotResult
 from mcp.server.fastmcp.utilities.types import Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
@@ -887,6 +888,48 @@ async def test_export_air_quality_history_returns_xlsx_resource(mock_ctx, mock_a
 
 
 @pytest.mark.asyncio
+async def test_export_air_quality_history_combines_all_devices_into_one_csv_resource(
+    mock_session, multi_device_configs
+):
+    """Export combines all matching devices into one CSV artifact."""
+    mgr = DeviceManager(mock_session, multi_device_configs)
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = mgr
+    named_devices = [
+        ("Living Room", AsyncMock()),
+        ("Office", AsyncMock()),
+        ("Bedroom", AsyncMock()),
+    ]
+    data_by_device = [
+        [{"timestamp": _TS_BASE * 1000, "co2": 400}],
+        [{"timestamp": _TS_BASE * 1000, "pm2_5": 12}],
+        [{"timestamp": (_TS_BASE + 120) * 1000, "co2": 420}],
+    ]
+
+    with (
+        patch.object(mgr, "all_devices", return_value=named_devices),
+        patch(
+            "mcp_airq.tools.read._collect_historical_data",
+            side_effect=data_by_device,
+        ),
+    ):
+        result = await export_air_quality_history(
+            ctx,
+            sensor="co2",
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            output_format="csv",
+        )
+
+    assert isinstance(result, EmbeddedResource)
+    assert isinstance(result.resource, TextResourceContents)
+    assert str(result.resource.uri).endswith("history-all-devices-co2.csv")
+    assert "Living Room,co2,ppm,400.0" in result.resource.text
+    assert "Bedroom,co2,ppm,420.0" in result.resource.text
+    assert "Office" not in result.resource.text
+
+
+@pytest.mark.asyncio
 async def test_plot_air_quality_history_supports_svg_resource(mock_ctx, mock_airq_with_history):
     """SVG plot output is returned as an embedded resource."""
     with patch.object(
@@ -906,6 +949,50 @@ async def test_plot_air_quality_history_supports_svg_resource(mock_ctx, mock_air
         assert result.resource.mimeType == "image/svg+xml"
         payload = base64.b64decode(result.resource.blob)
         assert payload.lstrip().startswith(b"<?xml")
+
+
+@pytest.mark.asyncio
+async def test_plot_air_quality_history_combines_all_devices_into_one_resource(mock_session, multi_device_configs):
+    """Plot combines all matching devices into one multi-series chart."""
+    mgr = DeviceManager(mock_session, multi_device_configs)
+    ctx = MagicMock()
+    ctx.request_context.lifespan_context = mgr
+    named_devices = [
+        ("Living Room", AsyncMock()),
+        ("Office", AsyncMock()),
+        ("Bedroom", AsyncMock()),
+    ]
+    data_by_device = [
+        [{"timestamp": _TS_BASE * 1000, "co2": 400}],
+        [{"timestamp": _TS_BASE * 1000, "pm2_5": 12}],
+        [{"timestamp": (_TS_BASE + 120) * 1000, "co2": 420}],
+    ]
+    render_result = PlotResult(output_format="svg", mime_type="image/svg+xml", payload=b"<svg/>")
+
+    with (
+        patch.object(mgr, "all_devices", return_value=named_devices),
+        patch(
+            "mcp_airq.tools.read._collect_historical_data",
+            side_effect=data_by_device,
+        ),
+        patch("mcp_airq.tools.read.render", new=AsyncMock(return_value=render_result)) as render_mock,
+    ):
+        result = await plot_air_quality_history(
+            ctx,
+            sensor="co2",
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            output_format="svg",
+        )
+
+    assert isinstance(result, EmbeddedResource)
+    assert isinstance(result.resource, BlobResourceContents)
+    assert str(result.resource.uri).endswith("plot-all-devices-co2.svg")
+    assert render_mock.await_args is not None
+    model, request = render_mock.await_args.args
+    assert [series.label for series in model.series] == ["Living Room", "Bedroom"]
+    assert model.y_axis_title == "ppm"
+    assert request.selector.devices == ["Living Room", "Bedroom"]
 
 
 @pytest.mark.asyncio
