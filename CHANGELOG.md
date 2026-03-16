@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.2] - 2026-03-16
+
+### Fixed
+
+- Historical multi-device queries now treat devices with no returned history as
+  empty instead of crashing the whole export or plot request.
+
 ## [1.6.1] - 2026-03-16
 
 ### Changed

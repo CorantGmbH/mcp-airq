@@ -1045,7 +1045,7 @@ wheels = [
 
 [[package]]
 name = "mcp-airq"
-version = "1.6.1"
+version = "1.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "aioairq" },

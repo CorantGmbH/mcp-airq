@@ -902,7 +902,7 @@ async def test_export_air_quality_history_combines_all_devices_into_one_csv_reso
     ]
     data_by_device = [
         [{"timestamp": _TS_BASE * 1000, "co2": 400}],
-        [{"timestamp": _TS_BASE * 1000, "pm2_5": 12}],
+        None,
         [{"timestamp": (_TS_BASE + 120) * 1000, "co2": 420}],
     ]
 

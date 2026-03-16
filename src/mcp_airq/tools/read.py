@@ -235,6 +235,13 @@ def _series_value(row: dict, sensor: str) -> float | None:
         return None
 
 
+def _normalize_history_rows(data: Sequence[dict] | None) -> list[dict]:
+    """Normalize optional raw history rows to a lower-cased list."""
+    if not data:
+        return []
+    return [_lower_keys(row) for row in data]
+
+
 def _rows_to_time_series(
     device_label: str,
     sensor: str,
@@ -334,8 +341,7 @@ async def _collect_series_for_targets(
     saw_rows = False
 
     for device_label, airq in named_devices:
-        data = await _collect_historical_data(airq, from_dt, to_dt)
-        data = [_lower_keys(row) for row in data]
+        data = _normalize_history_rows(await _collect_historical_data(airq, from_dt, to_dt))
         if data:
             saw_rows = True
             available.update(_history_sensor_keys(data))
@@ -665,8 +671,7 @@ async def get_air_quality_history(
         return time_range
     from_dt, to_dt, effective_timezone = time_range
 
-    data = await _collect_historical_data(airq, from_dt, to_dt)
-    data = [_lower_keys(row) for row in data]
+    data = _normalize_history_rows(await _collect_historical_data(airq, from_dt, to_dt))
 
     if sensors:
         error = _check_sensors_present(data, sensors)
