@@ -36,6 +36,9 @@ Use the same command directly from the shell:
 ```bash
 mcp-airq list-devices
 mcp-airq get-air-quality --device "Living Room"
+mcp-airq get-air-quality-history --device "Living Room" --last-hours 12 --sensors co2
+mcp-airq plot-air-quality-history --sensor co2 --device "Living Room" --output-format svg
+mcp-airq export-air-quality-history --sensor co2 --device "Living Room" --output-format xlsx
 mcp-airq set-night-mode --activated --device "Bedroom"
 ```
 
@@ -142,6 +145,9 @@ This writes to `~/.codex/config.toml` and is automatically picked up by the **Co
 | ------------------------- | -------------------------------------------------------------------- |
 | `list_devices`            | List all configured air-Q devices (with location/group if set)       |
 | `get_air_quality`         | Get sensor readings — by `device`, `location`, or `group`            |
+| `get_air_quality_history` | Get historical sensor data as column-oriented JSON                    |
+| `plot_air_quality_history` | Render historical charts as `png`, `webp`, `svg`, or `html`         |
+| `export_air_quality_history` | Export one historical sensor as `csv` or `xlsx`                   |
 | `get_device_info`         | Get device metadata (name, model, firmware version)                  |
 | `get_config`              | Get full device configuration                                        |
 | `get_logs`                | Get device log entries                                               |
@@ -199,6 +205,8 @@ Exactly one of `device`, `location`, or `group` may be specified per call.
 
 - *"How is the air quality in the living room?"* — queries all devices at that location
 - *"What's the air quality at home?"* — queries all devices in the "Home" group
+- *"Show the CO₂ trend over the last 12 hours as SVG"*
+- *"Export the radon history from yesterday as Excel"*
 - *"Show me the radon level"* — targets the air-Q Radon device by name
 - *"Show CO₂ on the LEDs"*
 - *"Enable night mode from 10 PM to 7 AM"*

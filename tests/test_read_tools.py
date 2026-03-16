@@ -1,11 +1,14 @@
 """Tests for read-only tools."""
 
+import base64
 import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
+from mcp.server.fastmcp.utilities.types import Image
+from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.config import DeviceConfig
 from mcp_airq.devices import DeviceManager
@@ -14,6 +17,7 @@ from mcp_airq.tools.read import (
     _downsample,
     _filter_sensors,
     _parse_time_range,
+    export_air_quality_history,
     get_air_quality,
     get_air_quality_history,
     get_brightness_config,
@@ -25,6 +29,7 @@ from mcp_airq.tools.read import (
     get_possible_led_themes,
     identify_device,
     list_devices,
+    plot_air_quality_history,
 )
 
 
@@ -289,16 +294,18 @@ NOW = datetime(2026, 3, 12, 12, 0, 0, tzinfo=timezone.utc)
 
 def test_parse_time_range_default_one_hour():
     """Defaults to last 1 hour when no arguments given."""
-    from_dt, to_dt = _parse_time_range(NOW, None, None, None)
+    from_dt, to_dt, timezone_name = _parse_time_range(NOW, None, None, None)
     assert to_dt == NOW
     assert from_dt == NOW - timedelta(hours=1)
+    assert timezone_name == "UTC"
 
 
 def test_parse_time_range_custom_hours():
     """Accepts a custom last_hours value."""
-    from_dt, to_dt = _parse_time_range(NOW, 6.0, None, None)
+    from_dt, to_dt, timezone_name = _parse_time_range(NOW, 6.0, None, None)
     assert from_dt == NOW - timedelta(hours=6)
     assert to_dt == NOW
+    assert timezone_name == "UTC"
 
 
 def test_parse_time_range_negative_hours():
@@ -312,27 +319,30 @@ def test_parse_time_range_from_to():
     """Accepts both from_datetime and to_datetime."""
     result = _parse_time_range(NOW, None, "2026-03-12T10:00:00+00:00", "2026-03-12T11:00:00+00:00")
     assert not isinstance(result, str)
-    from_dt, to_dt = result
+    from_dt, to_dt, timezone_name = result
     assert from_dt.hour == 10
     assert to_dt.hour == 11
+    assert timezone_name == "UTC"
 
 
 def test_parse_time_range_from_only():
     """Defaults to_datetime to now when only from_datetime is given."""
     result = _parse_time_range(NOW, None, "2026-03-12T10:00:00+00:00", None)
     assert not isinstance(result, str)
-    from_dt, to_dt = result
+    from_dt, to_dt, timezone_name = result
     assert from_dt.hour == 10
     assert to_dt == NOW
+    assert timezone_name == "UTC"
 
 
 def test_parse_time_range_naive_datetime():
     """Naive datetimes get UTC timezone attached."""
     result = _parse_time_range(NOW, None, "2026-03-12T10:00:00", "2026-03-12T11:00:00")
     assert not isinstance(result, str)
-    from_dt, to_dt = result
+    from_dt, to_dt, timezone_name = result
     assert from_dt.tzinfo == timezone.utc
     assert to_dt.tzinfo == timezone.utc
+    assert timezone_name == "UTC"
 
 
 def test_parse_time_range_from_after_to():
@@ -736,10 +746,10 @@ async def test_get_air_quality_history_columnar_format(mock_ctx, mock_airq_with_
         assert "_sensor_guide" in data
         cols = data["columns"]
         assert "timestamp" in cols
+        assert "datetime" in cols
         assert "temperature" in cols
         assert "co2" in cols
         assert "deviceid" not in cols
-        assert "datetime" not in cols
         assert len(cols["timestamp"]) == data["count"]
 
 
@@ -783,3 +793,134 @@ async def test_get_air_quality_history_missing_sensor(mock_ctx, mock_airq_with_h
         )
         assert "not available" in result
         assert "radon" in result
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_adds_timezone_and_history_guide(mock_ctx, mock_airq_with_history):
+    """Historical output includes localized timestamps and metadata guidance."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T11:00:00",
+            to_datetime="2026-03-12T11:05:00",
+            timezone_name="Europe/Berlin",
+        )
+        data = json.loads(result)
+        assert data["timezone"] == "Europe/Berlin"
+        assert data["columns"]["datetime"][0].endswith("+01:00")
+        assert "_history_guide" in data
+        assert "timestamp | s" in data["_history_guide"]
+
+
+@pytest.mark.asyncio
+async def test_get_air_quality_history_splits_compound_values(mock_ctx):
+    """Compound sensor values are split into value and quality columns."""
+    airq = AsyncMock()
+    airq.get_historical_files_list = AsyncMock(return_value=[str(_TS_BASE)])
+    airq.get_historical_file = AsyncMock(
+        return_value=[
+            {"timestamp": _TS_BASE * 1000, "co2": [400.5, 97.0]},
+            {"timestamp": (_TS_BASE + 120) * 1000, "co2": [410.0, 96.0]},
+        ]
+    )
+
+    with patch.object(mock_ctx.request_context.lifespan_context, "resolve", return_value=airq):
+        result = await get_air_quality_history(
+            mock_ctx,
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            sensors=["co2"],
+        )
+        data = json.loads(result)
+        cols = data["columns"]
+        assert cols["co2"] == [400.5, 410.0]
+        assert cols["co2_quality"] == [97.0, 96.0]
+
+
+@pytest.mark.asyncio
+async def test_export_air_quality_history_returns_csv_resource(mock_ctx, mock_airq_with_history):
+    """CSV export is returned as an embedded resource."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await export_air_quality_history(
+            mock_ctx,
+            sensor="co2",
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            output_format="csv",
+        )
+        assert isinstance(result, EmbeddedResource)
+        assert isinstance(result.resource, TextResourceContents)
+        assert result.resource.mimeType == "text/csv; charset=utf-8"
+        lines = result.resource.text.strip().splitlines()
+        assert lines[0].startswith("timestamp,")
+        assert lines[1].endswith(",400.0")
+
+
+@pytest.mark.asyncio
+async def test_export_air_quality_history_returns_xlsx_resource(mock_ctx, mock_airq_with_history):
+    """Excel export is returned as an embedded binary resource."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await export_air_quality_history(
+            mock_ctx,
+            sensor="co2",
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            output_format="xlsx",
+        )
+        assert isinstance(result, EmbeddedResource)
+        assert isinstance(result.resource, BlobResourceContents)
+        assert result.resource.mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        payload = base64.b64decode(result.resource.blob)
+        assert payload[:2] == b"PK"
+
+
+@pytest.mark.asyncio
+async def test_plot_air_quality_history_supports_svg_resource(mock_ctx, mock_airq_with_history):
+    """SVG plot output is returned as an embedded resource."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await plot_air_quality_history(
+            mock_ctx,
+            sensor="co2",
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            output_format="svg",
+        )
+        assert isinstance(result, EmbeddedResource)
+        assert isinstance(result.resource, BlobResourceContents)
+        assert result.resource.mimeType == "image/svg+xml"
+        payload = base64.b64decode(result.resource.blob)
+        assert payload.lstrip().startswith(b"<?xml")
+
+
+@pytest.mark.asyncio
+async def test_plot_air_quality_history_supports_webp_image(mock_ctx, mock_airq_with_history):
+    """WebP plot output is returned as an inline image."""
+    with patch.object(
+        mock_ctx.request_context.lifespan_context,
+        "resolve",
+        return_value=mock_airq_with_history,
+    ):
+        result = await plot_air_quality_history(
+            mock_ctx,
+            sensor="co2",
+            from_datetime="2026-03-12T09:55:00+00:00",
+            to_datetime="2026-03-12T10:05:00+00:00",
+            output_format="webp",
+        )
+        assert isinstance(result, Image)
