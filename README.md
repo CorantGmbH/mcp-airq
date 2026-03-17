@@ -207,6 +207,74 @@ get_air_quality(device="air-Q Radon")   → just that one device
 
 Exactly one of `device`, `location`, or `group` may be specified per call.
 
+## Historical Data
+
+Three tools provide access to data stored on the device's SD card:
+
+### Plotting charts
+
+`plot_air_quality_history` renders a chart for one sensor. When multiple devices
+match, each device becomes a separate series in the same chart.
+
+![CO₂ area chart — single device](docs/images/mcp_plot_co2_24h.png)
+
+*Single device (24 h, area chart, PNG)*
+
+![CO₂ area chart — multiple devices](docs/images/mcp_plot_co2_multi.png)
+
+*Multiple devices at one location (24 h, area chart, PNG)*
+
+```bash
+# Single device, last 24 hours (default), PNG output (default)
+mcp-airq plot-air-quality-history --sensor co2 --device "Living Room"
+
+# All devices at a location, custom time range, SVG output
+mcp-airq plot-air-quality-history --sensor co2 --location "Living Room" \
+  --from-datetime "2026-03-16T00:00:00" --to-datetime "2026-03-17T00:00:00" \
+  --output-format svg --output co2.svg
+
+# All configured devices, dark mode, line chart
+mcp-airq plot-air-quality-history --sensor co2 --dark --chart-type line
+
+# Save to file
+mcp-airq plot-air-quality-history --sensor co2 --output co2_chart.png
+```
+
+**Output formats:** `png` (default), `webp`, `svg`, `html` (interactive Plotly chart with hover tooltips and zoom)
+
+**Customization:** `--title`, `--x-axis-title`, `--y-axis-title`, `--chart-type` (line/area), `--dark`, `--timezone-name`
+
+### Exporting data
+
+`export_air_quality_history` produces one CSV or Excel file containing all matching devices.
+
+```bash
+# CSV export (default)
+mcp-airq export-air-quality-history --sensor co2 --device "Living Room" --last-hours 48
+
+# Excel export for all devices at a location
+mcp-airq export-air-quality-history --sensor radon --location "Home" \
+  --output-format xlsx --output radon.xlsx
+```
+
+### Querying raw JSON
+
+`get_air_quality_history` returns column-oriented JSON, useful for programmatic analysis.
+
+```bash
+mcp-airq get-air-quality-history --device "Living Room" --last-hours 12 \
+  --sensors co2 pm2_5 --max-points 150
+```
+
+### Common parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `--last-hours` | 1 (history) / 24 (plot) | Hours of data to retrieve |
+| `--from-datetime` / `--to-datetime` | — | ISO 8601 time range (overrides `--last-hours`) |
+| `--max-points` | 300 | Downsample to at most N evenly spaced points |
+| `--timezone-name` | UTC | IANA timezone for timestamps (e.g. `Europe/Berlin`) |
+
 ## Example Prompts
 
 - *"How is the air quality in the living room?"* — queries all devices at that location
