@@ -11,7 +11,11 @@ class DeviceManager:
 
     def __init__(self, session: aiohttp.ClientSession, configs: list[DeviceConfig]) -> None:
         self._session = session
-        self._configs = {cfg.name: cfg for cfg in configs}
+        self._configs: dict[str, DeviceConfig] = {}
+        for cfg in configs:
+            if cfg.name in self._configs:
+                raise ValueError(f"Duplicate device name '{cfg.name}' in AIRQ_DEVICES")
+            self._configs[cfg.name] = cfg
         self._instances: dict[str, AirQ] = {}
 
     @property

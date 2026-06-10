@@ -3,6 +3,9 @@
 import pytest
 from aioairq import AirQ
 
+from mcp_airq.config import DeviceConfig
+from mcp_airq.devices import DeviceManager
+
 
 def test_device_names(multi_device_manager):
     """device_names returns all configured names."""
@@ -11,6 +14,18 @@ def test_device_names(multi_device_manager):
         "Office",
         "Bedroom",
     ]
+
+
+def test_duplicate_device_names_raise(mock_session):
+    """Duplicate configured device names should fail instead of being overwritten."""
+    with pytest.raises(ValueError, match="Duplicate device name 'Office'"):
+        DeviceManager(
+            mock_session,
+            [
+                DeviceConfig("192.0.2.1", "pass1", "Office"),
+                DeviceConfig("192.0.2.2", "pass2", "Office"),
+            ],
+        )
 
 
 def test_single_device_auto_resolve(single_device_manager):
