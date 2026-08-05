@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.4] - 2026-08-05
+
+### Changed
+
+- Upgrade to MCP Python SDK v2.
+- Add a twice-monthly compatibility check that opens an issue on failure.
+
 ## [1.6.3] - 2026-03-16
 
 ### Changed

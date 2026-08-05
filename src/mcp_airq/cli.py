@@ -15,7 +15,7 @@ from types import SimpleNamespace
 from typing import Any, Literal, get_args, get_origin
 
 import aiohttp
-from mcp.server.fastmcp.utilities.types import Image
+from mcp.server.mcpserver import Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.config import load_config
@@ -169,9 +169,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _build_context(manager: DeviceManager) -> Any:
     """Build the minimal context object expected by the tool functions."""
-    return SimpleNamespace(
-        request_context=SimpleNamespace(lifespan_context=manager),
-    )
+    return SimpleNamespace(request_context=SimpleNamespace(lifespan_context=manager))
 
 
 async def _invoke_tool(tool_name: str, arguments: dict[str, Any]) -> Any:

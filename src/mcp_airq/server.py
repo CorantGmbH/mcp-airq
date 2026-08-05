@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import aiohttp
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from mcp_airq import __version__
 from mcp_airq.config import load_config
@@ -21,7 +21,7 @@ logger = logging.getLogger("mcp-airq")
 
 
 @asynccontextmanager
-async def app_lifespan(_server: FastMCP) -> AsyncIterator[DeviceManager]:
+async def app_lifespan(_server: MCPServer) -> AsyncIterator[DeviceManager]:
     """Create shared aiohttp session and device manager for the server lifetime."""
     configs = load_config()
     logger.info("Starting air-Q MCP server with %d device(s)", len(configs))
@@ -30,7 +30,7 @@ async def app_lifespan(_server: FastMCP) -> AsyncIterator[DeviceManager]:
         yield DeviceManager(session, configs)
 
 
-mcp = FastMCP(
+mcp = MCPServer(
     name="air-Q",
     instructions=(
         "This server provides access to air-Q air quality sensor devices. "

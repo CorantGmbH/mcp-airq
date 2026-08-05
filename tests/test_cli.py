@@ -1,10 +1,9 @@
 """Tests for the direct CLI wrapper."""
 
 import base64
-from typing import Any, cast
 from unittest.mock import AsyncMock, patch
 
-from mcp.server.fastmcp.utilities.types import Image
+from mcp.server.mcpserver import Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.cli import main
@@ -111,8 +110,8 @@ def test_main_prints_export_csv_resource(capsys):
     resource = EmbeddedResource(
         type="resource",
         resource=TextResourceContents(
-            uri=cast(Any, "airq://artifacts/history-all-devices-co2.csv"),
-            mimeType="text/csv; charset=utf-8",
+            uri="airq://artifacts/history-all-devices-co2.csv",
+            mime_type="text/csv; charset=utf-8",
             text=text,
         ),
     )
@@ -130,8 +129,8 @@ def test_main_writes_export_xlsx_resource(tmp_path, capsys):
     resource = EmbeddedResource(
         type="resource",
         resource=BlobResourceContents(
-            uri=cast(Any, "airq://artifacts/history-all-devices-co2.xlsx"),
-            mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            uri="airq://artifacts/history-all-devices-co2.xlsx",
+            mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             blob=base64.b64encode(b"xlsx-bytes").decode(),
         ),
     )

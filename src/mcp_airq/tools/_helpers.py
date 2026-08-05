@@ -1,16 +1,17 @@
 """Shared helpers for tool modules."""
 
 import json
+from typing import cast
 
 from aioairq import AirQ
-from mcp.server.fastmcp import Context
+from mcp.server.mcpserver import Context
 
 from mcp_airq.devices import DeviceManager
 
 
 def _manager(ctx: Context) -> DeviceManager:
     """Extract DeviceManager from request context."""
-    return ctx.request_context.lifespan_context
+    return cast(DeviceManager, ctx.request_context.lifespan_context)
 
 
 def _resolve(ctx: Context, device: str | None) -> tuple[DeviceManager, AirQ]:
