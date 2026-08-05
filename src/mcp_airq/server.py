@@ -6,11 +6,11 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import aiohttp
-from mcp.server.mcpserver import MCPServer
 
 from mcp_airq import __version__
 from mcp_airq.config import load_config
 from mcp_airq.devices import DeviceManager
+from mcp_airq.mcp_compat import MCPServer
 
 logging.basicConfig(
     level=logging.INFO,

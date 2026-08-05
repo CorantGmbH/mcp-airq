@@ -1032,7 +1032,7 @@ wheels = [
 
 [[package]]
 name = "mcp-airq"
-version = "1.6.4"
+version = "1.6.5"
 source = { editable = "." }
 dependencies = [
     { name = "aioairq" },
@@ -1059,7 +1059,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.3" },
     { name = "aioresponses", marker = "extra == 'dev'", specifier = ">=0.7" },
     { name = "airq-mcp-timeseries", specifier = ">=0.1.7" },
-    { name = "mcp", specifier = ">=2" },
+    { name = "mcp", specifier = ">=1.28.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "pyright", marker = "extra == 'dev'", specifier = ">=1.1" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=9.0.2" },

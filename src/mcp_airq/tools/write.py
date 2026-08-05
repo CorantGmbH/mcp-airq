@@ -2,14 +2,14 @@
 
 import json
 
-from mcp.server.mcpserver import Context
 from mcp.types import ToolAnnotations
 
 from mcp_airq.errors import handle_airq_errors
+from mcp_airq.mcp_compat import Context
 from mcp_airq.server import mcp
 from mcp_airq.tools._helpers import _resolve
 
-WRITE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True)
+WRITE = ToolAnnotations.model_validate({"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True})
 
 
 @mcp.tool(annotations=WRITE)
@@ -100,7 +100,9 @@ async def set_brightness(
     return result
 
 
-@mcp.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=True))
+@mcp.tool(
+    annotations=ToolAnnotations.model_validate({"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True})
+)
 @handle_airq_errors
 async def configure_network(
     ctx: Context,

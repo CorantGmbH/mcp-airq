@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.5] - 2026-08-05
+
+### Changed
+
+- Restore compatibility with MCP Python SDK v1.28+ while retaining v2 support.
+- Test both the latest v1.x and the latest stable MCP SDK in the compatibility workflow.
+
 ## [1.6.4] - 2026-08-05
 
 ### Changed

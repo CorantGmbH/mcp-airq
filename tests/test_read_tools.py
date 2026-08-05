@@ -8,11 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 from airq_mcp_timeseries.models import PlotResult
-from mcp.server.mcpserver import Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.config import DeviceConfig
 from mcp_airq.devices import DeviceManager
+from mcp_airq.mcp_compat import Image
 from mcp_airq.tools.read import (
     _collect_historical_data,
     _downsample,
@@ -859,7 +859,7 @@ async def test_export_air_quality_history_returns_csv_resource(mock_ctx, mock_ai
         )
         assert isinstance(result, EmbeddedResource)
         assert isinstance(result.resource, TextResourceContents)
-        assert result.resource.mime_type == "text/csv; charset=utf-8"
+        assert result.resource.model_dump(by_alias=True)["mimeType"] == "text/csv; charset=utf-8"
         lines = result.resource.text.strip().splitlines()
         assert lines[0].startswith("timestamp,")
         assert lines[1].endswith(",400.0")
@@ -882,7 +882,10 @@ async def test_export_air_quality_history_returns_xlsx_resource(mock_ctx, mock_a
         )
         assert isinstance(result, EmbeddedResource)
         assert isinstance(result.resource, BlobResourceContents)
-        assert result.resource.mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        assert (
+            result.resource.model_dump(by_alias=True)["mimeType"]
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         payload = base64.b64decode(result.resource.blob)
         assert payload[:2] == b"PK"
 
@@ -946,7 +949,7 @@ async def test_plot_air_quality_history_supports_svg_resource(mock_ctx, mock_air
         )
         assert isinstance(result, EmbeddedResource)
         assert isinstance(result.resource, BlobResourceContents)
-        assert result.resource.mime_type == "image/svg+xml"
+        assert result.resource.model_dump(by_alias=True)["mimeType"] == "image/svg+xml"
         payload = base64.b64decode(result.resource.blob)
         assert payload.lstrip().startswith(b"<?xml")
 

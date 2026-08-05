@@ -4,9 +4,9 @@ import json
 from typing import cast
 
 from aioairq import AirQ
-from mcp.server.mcpserver import Context
 
 from mcp_airq.devices import DeviceManager
+from mcp_airq.mcp_compat import Context
 
 
 def _manager(ctx: Context) -> DeviceManager:

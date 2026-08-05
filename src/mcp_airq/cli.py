@@ -15,11 +15,11 @@ from types import SimpleNamespace
 from typing import Any, Literal, get_args, get_origin
 
 import aiohttp
-from mcp.server.mcpserver import Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.config import load_config
 from mcp_airq.devices import DeviceManager
+from mcp_airq.mcp_compat import Image
 from mcp_airq.tools import dangerous, read, write
 
 ToolFunction = Any

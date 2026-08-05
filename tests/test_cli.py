@@ -3,10 +3,10 @@
 import base64
 from unittest.mock import AsyncMock, patch
 
-from mcp.server.mcpserver import Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 from mcp_airq.cli import main
+from mcp_airq.mcp_compat import Image
 
 
 def test_main_runs_list_devices_command(capsys):
@@ -109,10 +109,12 @@ def test_main_prints_export_csv_resource(capsys):
     text = "timestamp,series,metric,unit,value\n2026-03-16T10:00:00+01:00,Living Room,co2,ppm,700.0\n"
     resource = EmbeddedResource(
         type="resource",
-        resource=TextResourceContents(
-            uri="airq://artifacts/history-all-devices-co2.csv",
-            mime_type="text/csv; charset=utf-8",
-            text=text,
+        resource=TextResourceContents.model_validate(
+            {
+                "uri": "airq://artifacts/history-all-devices-co2.csv",
+                "mimeType": "text/csv; charset=utf-8",
+                "text": text,
+            }
         ),
     )
 
@@ -128,10 +130,12 @@ def test_main_writes_export_xlsx_resource(tmp_path, capsys):
     output = tmp_path / "co2.xlsx"
     resource = EmbeddedResource(
         type="resource",
-        resource=BlobResourceContents(
-            uri="airq://artifacts/history-all-devices-co2.xlsx",
-            mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            blob=base64.b64encode(b"xlsx-bytes").decode(),
+        resource=BlobResourceContents.model_validate(
+            {
+                "uri": "airq://artifacts/history-all-devices-co2.xlsx",
+                "mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "blob": base64.b64encode(b"xlsx-bytes").decode(),
+            }
         ),
     )
 

@@ -23,17 +23,17 @@ from airq_mcp_timeseries.models import (
 from airq_mcp_timeseries.renderers import render
 from airq_mcp_timeseries.services.export import export_series_set
 from airq_mcp_timeseries.services.plot_model import build_plot_model
-from mcp.server.mcpserver import Context, Image
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents, ToolAnnotations
 
 from mcp_airq.errors import handle_airq_errors
 from mcp_airq.guides import CONFIG_GUIDE, build_sensor_guide, sensor_unit
+from mcp_airq.mcp_compat import Context, Image
 from mcp_airq.server import mcp
 from mcp_airq.tools._helpers import _json, _manager, _resolve
 
 logger = logging.getLogger(__name__)
 
-READ_ONLY = ToolAnnotations(read_only_hint=True, destructive_hint=False)
+READ_ONLY = ToolAnnotations.model_validate({"readOnlyHint": True, "destructiveHint": False})
 _META_KEYS = {"datetime", "timestamp", "deviceid"}
 _FILE_BUFFER_S = 300  # seconds of slack when pre-filtering file names
 
@@ -425,9 +425,11 @@ def _resource_from_payload(filename: str, payload: bytes | str, mime_type: str) 
     """Wrap exported bytes/text as an embedded MCP resource."""
     uri = f"airq://artifacts/{filename}"
     if isinstance(payload, str):
-        resource = TextResourceContents(uri=uri, mime_type=mime_type, text=payload)
+        resource = TextResourceContents.model_validate({"uri": uri, "mimeType": mime_type, "text": payload})
     else:
-        resource = BlobResourceContents(uri=uri, mime_type=mime_type, blob=base64.b64encode(payload).decode())
+        resource = BlobResourceContents.model_validate(
+            {"uri": uri, "mimeType": mime_type, "blob": base64.b64encode(payload).decode()}
+        )
     return EmbeddedResource(type="resource", resource=resource)
 
 
