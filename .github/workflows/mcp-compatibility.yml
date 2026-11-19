@@ -17,7 +17,7 @@ jobs:
         mcp: ["mcp>=1.28.1,<2", "mcp"]
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: python -m pip install uv
